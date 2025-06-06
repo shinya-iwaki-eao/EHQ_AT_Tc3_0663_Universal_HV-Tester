@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_Reihenfolge" Id="{6dae7876-b841-4a10-ad0d-4ffe19807f82}">
+    <Declaration><![CDATA[TYPE ST_Reihenfolge :
+STRUCT
+	eAblauf: AblaufStatus;
+	eLetzterStatus: AblaufStatus;
+	tFahrzeit: TIME;
+	tHaltezeit: TIME;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

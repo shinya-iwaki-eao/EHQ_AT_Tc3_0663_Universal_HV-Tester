@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_Station" Id="{2e037f12-c68e-4d22-aa71-f9af3e6bb280}">
+    <Declaration><![CDATA[TYPE ST_Station :
+STRUCT
+	bRstStop:			BOOL;		//Schreibt Station
+	bInit:				BOOL;		//Schreibt Main
+	bInitBeendet:		BOOL;		//Schreibt Station
+	bReset:				BOOL;
+	bStoerung:			BOOL;		//Anlage blockiert
+	bWarnung:			BOOL;		//Könnte verzögerungen verursachen
+	nStationsNr:		INT;
+	
+	bZyklusFertig:		BOOL;
+	sStatus:			STRING;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

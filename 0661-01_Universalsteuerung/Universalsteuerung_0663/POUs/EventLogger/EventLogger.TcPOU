@@ -1,0 +1,237 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="EventLogger" Id="{1500f798-262a-440f-8446-1df31fe2b41e}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM EventLogger
+VAR
+	bInit:			BOOL:=TRUE;
+	
+	aAlarm:			ARRAY[0..Parameter.cAnzEvents] OF FB_Event;
+	aMessage:		ARRAY[0..Parameter.cAnzEvents] OF FB_Event;
+	aWarnung:		ARRAY[0..Parameter.cAnzEvents] OF FB_Event;
+	aErrorLog:		ARRAY[0..Parameter.cAnzEvents] OF FB_Event;
+	
+	i:				INT;
+	j:				INT;
+	
+	
+	
+	fbTime 			: NT_GetTime;
+END_VAR
+VAR PERSISTENT	
+	aLoggedEvents:	ARRAY[0..Parameter.cAnzLoggedEvents] OF ST_EventTabelle;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bInit THEN
+    bInit := FALSE; 
+	//Station 1
+	aAlarm[13].setText('error', 'Aktor 1 hat Arbeitsposition nicht erreicht oder verloren');
+	aAlarm[14].setText('error', 'Aktor 1 hat Ruheposition nicht erreicht oder verloren');
+	aAlarm[15].setText('error', 'Aktor 2 hat Arbeitsposition nicht erreicht oder verloren');
+	aAlarm[16].setText('error', 'Aktor 2 hat Ruheposition nicht erreicht oder verloren');
+	aAlarm[17].setText('error', 'Aktor 3 hat Arbeitsposition nicht erreicht oder verloren');
+	aAlarm[18].setText('error', 'Aktor 3 hat Ruheposition nicht erreicht oder verloren');
+	aAlarm[19].setText('error', 'Aktor 4 hat Arbeitsposition nicht erreicht oder verloren');
+	aAlarm[20].setText('error', 'Aktor 4 hat Ruheposition nicht erreicht oder verloren');
+	aAlarm[21].setText('error', 'Aktor 5 hat Arbeitsposition nicht erreicht oder verloren');
+	aAlarm[22].setText('error', 'Aktor 5 hat Ruheposition nicht erreicht oder verloren');
+	aAlarm[23].setText('error', 'Aktor 6 hat Arbeitsposition nicht erreicht oder verloren');
+	aAlarm[24].setText('error', 'Aktor 6 hat Ruheposition nicht erreicht oder verloren');
+	
+	aAlarm[39].setText('error', 'Kein Teil in Aufnahme. Station per Reset zurücksetzen');
+	aAlarm[40].setText('error', 'Not-Halt muss getestet werden');
+	
+
+	//	
+	aAlarm[100].setText('error', 'Fehler Safety. Anlage mittels Hauptschalter neu starten');
+	
+	aAlarm[253].setText('error', 'Es wurde {0} Mal in Folge Ausschuss erkannt. Bitte Fehler beheben und "Stoerung Quittieren" betaetigen');
+	aAlarm[257].setText('error', 'Luftdruck ist ausserhalb von 5.0 - 6.0bar');
+	//
+	
+	aAlarm[262].setText('error', 'Informationen konnten nicht an Datenbank gesendet werden. Um erneut zu senden, Störung quittieren');
+	aAlarm[264].setText('error', 'Senden an Datenbank nicht möglich. (Queue voll) Bitte an Support wenden');
+
+	//
+	aErrorLog[230].setText('error', 'Anlage kann nicht gestartet werden, da der Programmablaufunterbruch aktiv ist');
+	aErrorLog[231].setText('error', 'Anlage kann nicht gestartet werden, da sich ein Aktor in der falschen Position befindet (im Handbetrieb verfahren)');
+	aErrorLog[232].setText('error', 'Anlage kann nicht gestartet werden, da der Handbetrieb aktiviert ist');
+	aErrorLog[233].setText('error', 'Anlage kann nicht gestartet werden, da sie nicht fertig Initialisiert ist');
+	aErrorLog[234].setText('error', 'Anlage kann nicht gestartet werden, da kein Artikel vorgewaehlt wurde');
+	aErrorLog[235].setText('error', 'Anlage kann nicht gestartet werden, da zu viel Ausschuss in Folge produziert wurde');
+	aErrorLog[250].setText('error', '{0} sollte sich in der {1} befinden (Falsche Position beim verlassen des Handbetriebs)');
+	//
+	aErrorLog[260].setText('error', 'Überstromschutzklemme {0} Kanal {1} {2}');
+	aErrorLog[261].setText('error', 'MQTT-Message Timeout. Art: {0}, Kennung: {1}');
+	aErrorLog[263].setText('error', 'MQTT-Message Error. Art: {0}, Grund: {1}, Kennung: {2}');
+	//
+	//
+	aErrorLog[300].setText('error', '{0}');
+	//
+	aWarnung[300].setText('warnung', '{0}');
+	//
+	aMessage[10].setText('info', 'Init wartet auf {0}');
+	aMessage[11].setText('info', 'Init fertig');
+	aMessage[300].setText('info', '{0}');
+	
+	
+	FOR i := 0 TO Parameter.cAnzLoggedEvents DO
+		IF			aLoggedEvents[i].sStatus = 'Aktiv'
+			or		aLoggedEvents[i].bPinned THEN
+			aLoggedEvents[i].sStatus := 'Cleared';
+			aLoggedEvents[i].bPinned := FALSE;
+		END_IF
+	END_FOR
+END_IF
+
+fbTime(START := TRUE);
+fbTime(START := FALSE);
+
+FOR i := 0 TO Parameter.cAnzEvents DO
+	aAlarm[i](nID := i);
+	aMessage[i](nID := i);
+	aWarnung[i](nID := i);
+	aErrorLog[i](nID := i);
+END_FOR]]></ST>
+    </Implementation>
+    <Method Name="logEvent" Id="{dddbf2d9-2d14-4a05-8ba4-3074f981098c}">
+      <Declaration><![CDATA[METHOD logEvent
+VAR_INPUT
+	nEventId:	INT;
+	sText:		STRING(255);
+	sSeverity: 	STRING;
+	bPin:		BOOL;
+END_VAR
+VAR
+	i:			INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i := Parameter.cAnzLoggedEvents-1 TO 0 BY -1 DO
+	
+	IF 		NOT aLoggedEvents[i].bPinned 		//Nicht gepinnte Events schieben
+		OR		bPin THEN						//Gepinnte Events auch schieben falls der neue gepinnt werden soll
+		aLoggedEvents[i+1] := aLoggedEvents[i];
+	ELSE					
+		EXIT;
+	END_IF
+END_FOR
+
+
+
+aLoggedEvents[i+1].bPinned := bPin;
+aLoggedEvents[i+1].sText := sText;
+aLoggedEvents[i+1].sSeverity := sSeverity;
+aLoggedEvents[i+1].nEventId := nEventId;
+aLoggedEvents[i+1].sTimestamp := SYSTEMTIME_TO_STRING(fbTime.TIMESTR);
+
+IF			bPin THEN
+	aLoggedEvents[i+1].sStatus := 'Aktiv';
+ELSE 
+	aLoggedEvents[i+1].sStatus := '';
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="unpinEvent" Id="{9363361b-7b0a-4201-937b-a77ae2c26f1c}">
+      <Declaration><![CDATA[METHOD unpinEvent
+VAR_INPUT
+	nID:		INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i := 0 TO Parameter.cAnzLoggedEvents DO	
+	IF 			(aLoggedEvents[i].nEventId = nID)
+		AND	 	aLoggedEvents[i].bPinned THEN
+		aLoggedEvents[i].sStatus := 'Cleared';
+		aLoggedEvents[i].bPinned := FALSE;
+	END_IF
+END_FOR
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="EventLogger">
+      <LineId Id="10" Count="0" />
+      <LineId Id="228" Count="0" />
+      <LineId Id="756" Count="0" />
+      <LineId Id="253" Count="0" />
+      <LineId Id="691" Count="4" />
+      <LineId Id="821" Count="4" />
+      <LineId Id="819" Count="1" />
+      <LineId Id="728" Count="0" />
+      <LineId Id="778" Count="0" />
+      <LineId Id="799" Count="0" />
+      <LineId Id="779" Count="0" />
+      <LineId Id="271" Count="0" />
+      <LineId Id="800" Count="0" />
+      <LineId Id="845" Count="0" />
+      <LineId Id="471" Count="0" />
+      <LineId Id="373" Count="0" />
+      <LineId Id="583" Count="0" />
+      <LineId Id="665" Count="0" />
+      <LineId Id="584" Count="1" />
+      <LineId Id="645" Count="0" />
+      <LineId Id="469" Count="0" />
+      <LineId Id="372" Count="0" />
+      <LineId Id="374" Count="5" />
+      <LineId Id="578" Count="0" />
+      <LineId Id="666" Count="0" />
+      <LineId Id="579" Count="0" />
+      <LineId Id="624" Count="0" />
+      <LineId Id="580" Count="1" />
+      <LineId Id="548" Count="0" />
+      <LineId Id="553" Count="1" />
+      <LineId Id="314" Count="1" />
+      <LineId Id="409" Count="0" />
+      <LineId Id="550" Count="0" />
+      <LineId Id="780" Count="0" />
+      <LineId Id="490" Count="0" />
+      <LineId Id="496" Count="0" />
+      <LineId Id="500" Count="0" />
+      <LineId Id="504" Count="0" />
+      <LineId Id="497" Count="0" />
+      <LineId Id="502" Count="0" />
+      <LineId Id="501" Count="0" />
+      <LineId Id="498" Count="0" />
+      <LineId Id="491" Count="0" />
+      <LineId Id="527" Count="0" />
+      <LineId Id="526" Count="0" />
+      <LineId Id="399" Count="0" />
+      <LineId Id="528" Count="0" />
+      <LineId Id="398" Count="0" />
+      <LineId Id="400" Count="0" />
+      <LineId Id="402" Count="2" />
+      <LineId Id="523" Count="0" />
+    </LineIds>
+    <LineIds Name="EventLogger.logEvent">
+      <LineId Id="5" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="53" Count="1" />
+      <LineId Id="27" Count="0" />
+    </LineIds>
+    <LineIds Name="EventLogger.unpinEvent">
+      <LineId Id="7" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="13" Count="2" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

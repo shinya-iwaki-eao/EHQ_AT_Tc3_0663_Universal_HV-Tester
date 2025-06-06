@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="IF_Station" Id="{5667169a-38a1-45ed-af5e-430c57bf5788}">
+    <Declaration><![CDATA[INTERFACE IF_Station]]></Declaration>
+    <Method Name="bearbeitenAnfordern" Id="{a689ab61-54ad-44f3-8e79-a308d6d1edd4}">
+      <Declaration><![CDATA[METHOD bearbeitenAnfordern
+VAR_INPUT
+	nAufnahme:		INT;
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="init" Id="{a6a1835c-3dca-473a-ad94-1d32a06b7075}">
+      <Declaration><![CDATA[METHOD init : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="reset" Id="{98b3e791-d6ae-4945-85f8-b61594dbb693}">
+      <Declaration><![CDATA[METHOD reset : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="teilBearbeiten" Id="{f0748cee-c9ee-42af-97d3-634c553a8d5a}">
+      <Declaration><![CDATA[METHOD teilBearbeiten : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

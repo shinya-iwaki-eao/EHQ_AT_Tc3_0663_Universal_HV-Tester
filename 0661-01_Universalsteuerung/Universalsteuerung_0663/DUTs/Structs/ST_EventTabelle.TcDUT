@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_EventTabelle" Id="{799e2725-b248-47f6-9b3a-79798792a14a}">
+    <Declaration><![CDATA[TYPE ST_EventTabelle :
+STRUCT
+	sSeverity:			STRING;
+	sStatus:			STRING;
+	sTimestamp:			STRING;
+	sText:				STRING(255);
+	nEventId:			INT;
+	bPinned:			BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

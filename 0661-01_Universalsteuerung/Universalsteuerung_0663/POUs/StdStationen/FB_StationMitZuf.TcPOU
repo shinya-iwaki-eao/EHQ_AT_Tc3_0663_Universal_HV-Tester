@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_StationMitZuf" Id="{27135f01-859d-4713-8899-53fc55e1cddc}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_StationMitZuf EXTENDS FB_Station
+VAR_INPUT
+	ifTeilHolen:			IF_TeilHolen;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	eHolStatus: 			AblaufStatus := AblaufStatus.bereit;
+	eStatusGreifer:			StatusGreifer;
+	nTeileZaehler:			INT;	
+	nAusschussZaehler:		INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//********************************************************************************					
+//Schrittbetrieb
+fbSchrittbetrieb.eHolStatus := eHolStatus;
+fbSchrittbetrieb.bAblaufAktiv := fbSchrittbetrieb.bAblaufAktiv OR nTeileZaehler > 0;
+
+//********************************************************************************					
+//Handzyklus (Muss Vor SUPER Call sein, damit diese Version vom Hand Zyklus ausgeführt wird)
+//IF			bBtnHandZyklus THEN
+//	bBtnHandZyklus := FALSE;
+//	
+//	IF			stStationInfo.bZyklusFertig
+//		AND		bRstInPos
+//		AND NOT MAIN.bProduzieren THEN
+//		IF			MAIN.hatAufnBeiStJob(stStationInfo.nStationsNr) THEN							//Aufnahme will bearbeitet werden (Teile wurden schon bestellt)
+//			ifStation.bearbeitenAnfordern(MAIN.getAufnahmeBeiStation(stStationInfo.nStationsNr));	//Aktuelle Aufnahme wird verwendet
+//		ELSE																						//Aufnahme will NICHT bearbeitet werden (Teile müssen bestellt werden)
+//			MAIN.vorwahlPseudoaufnahme();
+//			ifTeilHolen.holenAnfordern();
+//			ifStation.bearbeitenAnfordern(Parameter.cAnzAufnahmen+1);								//Pseudoaufnahme wird verwendet
+//		END_IF	
+//	END_IF
+//END_IF
+
+//********************************************************************************					
+//Call Basisklasse
+SUPER^(stStationInfo := stStationInfo);
+
+//********************************************************************************					
+//Ablauf
+
+IF			stStationInfo.bInitBeendet 
+	AND NOT stStationInfo.bReset
+	AND NOT fbSchrittbetrieb.bInQueue THEN
+	
+	IF			nTeileZaehler > 0  THEN
+		ifTeilHolen.teilHolen();
+	END_IF
+END_IF
+
+
+IF			(nAusschussZaehler > 0)
+	AND		(nTeileZaehler > 1
+	OR		(nTeileZaehler > 0
+	AND		(eHolStatus = AblaufStatus.bereit))) THEN
+	nTeileZaehler := nTeileZaehler-1;
+	nAusschussZaehler := nAusschussZaehler-1;
+END_IF
+
+//********************************************************************************
+//Statusanzeige
+IF			stStationInfo.bInitBeendet
+	AND	NOT	stStationInfo.bReset
+	AND NOT stStationInfo.bInit
+	AND NOT (eStatusGreifer = StatusGreifer.teilGeholt)
+	AND NOT (eStatusGreifer = StatusGreifer.teilAbgelegt) THEN	
+	stStationInfo.sStatus := TO_STRING(eHolStatus);
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="ausschussMelden" Id="{653abd3d-a6e1-4eb4-a649-0a92cf4bf0ff}">
+      <Declaration><![CDATA[METHOD ausschussMelden
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[nAusschussZaehler := nAusschussZaehler+1;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="holenAnfordern" Id="{41960a1e-5c82-47b8-a1c3-262360560cc5}">
+      <Declaration><![CDATA[METHOD holenAnfordern
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[nTeileZaehler := nTeileZaehler+1;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_StationMitZuf">
+      <LineId Id="218" Count="0" />
+      <LineId Id="217" Count="0" />
+      <LineId Id="162" Count="0" />
+      <LineId Id="199" Count="0" />
+      <LineId Id="219" Count="0" />
+      <LineId Id="238" Count="5" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="265" Count="0" />
+      <LineId Id="244" Count="3" />
+      <LineId Id="264" Count="0" />
+      <LineId Id="248" Count="2" />
+      <LineId Id="215" Count="1" />
+      <LineId Id="235" Count="0" />
+      <LineId Id="214" Count="0" />
+      <LineId Id="105" Count="0" />
+      <LineId Id="237" Count="0" />
+      <LineId Id="106" Count="3" />
+      <LineId Id="115" Count="0" />
+      <LineId Id="160" Count="0" />
+      <LineId Id="148" Count="0" />
+      <LineId Id="116" Count="2" />
+      <LineId Id="131" Count="8" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="164" Count="2" />
+      <LineId Id="171" Count="0" />
+      <LineId Id="182" Count="1" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="176" Count="0" />
+      <LineId Id="187" Count="0" />
+      <LineId Id="163" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_StationMitZuf.ausschussMelden">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_StationMitZuf.holenAnfordern">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

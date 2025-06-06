@@ -1,0 +1,186 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Datei" Id="{d1707340-83fc-45c2-9cd8-d37d59708570}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Datei
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	eDateiSchreiben:		AblaufStatus := AblaufStatus.bereit;	
+                            	
+	sNetId: 					T_AmsNetId := '';	(* TwinCAT system network address *)
+	nZaehler:					INT;
+
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*
+Autor: 		PFS
+Version:	1.0
+Beschreibung:
+Diese Klasse legt die Messdaten in einem CSV-File ab.
+*)
+
+//fbSystemZeit(	NETID := Main.sSrcNetId,
+//				START := NOT fbSystemZeit.START); 
+//schreibAblauf();
+]]></ST>
+    </Implementation>
+    <Method Name="schreiben" Id="{fd2c8922-e92c-4159-9689-cdf1c8061708}">
+      <Declaration><![CDATA[METHOD schreiben : BOOL
+VAR_INPUT
+	
+END_VAR
+VAR
+END_VAR
+VAR_INST
+	sFileName: 					T_MaxString;(* CSV destination file path and name *)
+	hFile:						UINT := 0;(* File handle of the source file *)
+	                        	
+	fbFileOpen:					FB_FileOpen;(* Opens file *)
+	fbFileClose:				FB_FileClose;(* Closes file *)
+	fbFilePuts:					FB_FilePuts;(* Writes one record (line) *)
+	fbFileWrite:				FB_FileWrite; 
+	
+	
+	sTempString:				STRING(255);
+	sLine:						STRING(255);
+	
+	i:							INT;
+	nIndex:						INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE eDateiSchreiben OF
+	
+	//***********************************************************************************************
+	AblaufStatus.bereit:
+	
+		//Dateiname zusammensetzen
+		sFileName := CONCAT(Parameter.sPfad, MAIN.HMI.ProgrammTemp.sName);
+		sFileName := CONCAT(sFileName, '.csv');
+		
+		hFile			:= 0;
+		eDateiSchreiben 	:= AblaufStatus.oeffnen;
+		
+	//***********************************************************************************************
+	AblaufStatus.oeffnen:
+	
+		fbFileOpen( bExecute := FALSE  );
+		
+		fbFileOpen( 	sNetId := sNetId,
+						sPathName := sFileName,
+						nMode := FOPEN_MODEWRITE,
+						ePath := PATH_GENERIC,
+						bExecute := TRUE);
+						
+		eDateiSchreiben := AblaufStatus.wartenOffen;
+		
+	//***********************************************************************************************
+	AblaufStatus.wartenOffen:
+	
+		fbFileOpen( bExecute := FALSE, hFile => hFile );
+		IF NOT fbFileOpen.bBusy THEN
+			IF NOT fbFileOpen.bError THEN
+				eDateiSchreiben := AblaufStatus.schreiben;
+				sLine := '';
+				nIndex := 0;
+			ELSE	
+				eDateiSchreiben := AblaufStatus.error;
+			END_IF
+		END_IF
+				
+	//***********************************************************************************************	
+	AblaufStatus.schreiben:
+	
+//		FOR i := nIndex TO Parameter.cZyklenProMessung DO
+			
+//			sTempString := CONCAT(REAL_TO_STRING(aMessdaten[1,i].x), ';');
+//			sTempString := CONCAT(sTempString, REAL_TO_STRING(aMessdaten[1,i].y));
+//			sTempString := CONCAT(sTempString, '$R');
+//			nIndex := i;
+			
+//			IF 			(LEN(sLine) + LEN(sTempString) <= 255) THEN
+//				sLine := CONCAT(sLine, sTempString);
+//			ELSE
+//				EXIT;
+//			END_IF
+//		END_FOR
+		
+	
+		fbFileWrite( bExecute := FALSE );
+		
+		fbFileWrite( sNetId := sNetId,
+					hFile := hFile,
+					pWriteBuff := ADR(MAIN.HMI.ProgrammTemp),
+					cbWriteLen := SIZEOF(MAIN.HMI.ProgrammTemp),
+					tTimeout := T#2S,    
+					bExecute := TRUE );
+		eDateiSchreiben := AblaufStatus.wartenGeschrieben;
+
+	//***********************************************************************************************
+	AblaufStatus.wartenGeschrieben:
+	
+		fbFileWrite( bExecute := FALSE);
+		IF NOT fbFileWrite.bBusy THEN
+			IF NOT fbFileWrite.bError THEN
+				
+				eDateiSchreiben := AblaufStatus.schliessen;(* Write next record *)
+				
+			ELSE(* Error *)
+				eDateiSchreiben := AblaufStatus.error;
+			END_IF
+		END_IF
+
+	//***********************************************************************************************
+	AblaufStatus.schliessen:
+	
+		fbFileClose( bExecute := FALSE );
+		fbFileClose( sNetId := sNetId, hFile := hFile, bExecute := TRUE );
+		eDateiSchreiben := AblaufStatus.wartenGeschlossen;
+
+	//***********************************************************************************************
+	AblaufStatus.wartenGeschlossen:
+	
+		fbFileClose( bExecute := FALSE);
+		IF ( NOT fbFileClose.bBusy ) THEN
+
+			eDateiSchreiben := AblaufStatus.error;
+		
+			hFile := 0;
+			
+		END_IF
+
+	//***********************************************************************************************
+	AblaufStatus.error:
+	
+		IF ( hFile <> 0 ) THEN
+			eDateiSchreiben := AblaufStatus.schliessen;
+		ELSE
+			eDateiSchreiben := AblaufStatus.bereit;
+			schreiben := TRUE;
+		END_IF
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Datei">
+      <LineId Id="3" Count="9" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Datei.schreiben">
+      <LineId Id="316" Count="6" />
+      <LineId Id="327" Count="34" />
+      <LineId Id="430" Count="11" />
+      <LineId Id="374" Count="3" />
+      <LineId Id="379" Count="1" />
+      <LineId Id="445" Count="0" />
+      <LineId Id="447" Count="2" />
+      <LineId Id="446" Count="0" />
+      <LineId Id="381" Count="8" />
+      <LineId Id="394" Count="0" />
+      <LineId Id="396" Count="33" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

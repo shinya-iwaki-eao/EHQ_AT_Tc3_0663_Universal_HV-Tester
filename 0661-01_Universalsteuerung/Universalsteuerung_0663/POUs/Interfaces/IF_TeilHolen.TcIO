@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="IF_TeilHolen" Id="{613d4a21-8024-4d01-8b02-dd614f2582a8}">
+    <Declaration><![CDATA[INTERFACE IF_TeilHolen
+]]></Declaration>
+    <Method Name="holenAnfordern" Id="{4924966c-4666-47de-accb-40619baf1922}">
+      <Declaration><![CDATA[METHOD holenAnfordern
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="teilHolen" Id="{32ecd279-038d-45c5-9083-48ccc08ca6b5}">
+      <Declaration><![CDATA[METHOD teilHolen : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

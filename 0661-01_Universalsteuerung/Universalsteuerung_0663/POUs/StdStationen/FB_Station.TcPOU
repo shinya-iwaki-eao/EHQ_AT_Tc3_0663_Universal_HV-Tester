@@ -1,0 +1,157 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.11">
+  <POU Name="FB_Station" Id="{497725e8-26a9-4758-81f0-f8d59e80e301}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Station
+VAR_INPUT
+	ifStation:				IF_Station;
+	bRstInPos: 				BOOL;
+END_VAR
+VAR_IN_OUT
+	stStationInfo:			ST_Station;
+END_VAR
+VAR	
+	//FBs	
+	fbSchrittbetrieb:		FB_Schrittbetrieb;
+								
+	//Reset
+	eResetStatus:			ResetStatus := ResetStatus.bereit;
+	bBtnReset:				BOOL;
+		
+	//Sonstiges
+	eInitStatus:			InitStatus := InitStatus.bereit;
+	eAblaufStatus:			AblaufStatus := AblaufStatus.bereit;
+	
+	bTeilBearbeiten:		BOOL;
+	nAufnahmeNr:			INT;
+	
+	bBtnHandZyklus:			BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//********************************************************************************
+//Schrittbetrieb
+fbSchrittbetrieb(	eAblaufStatus := eAblaufStatus,
+					stStationInfo := stStationInfo,
+					bRstInPos := bRstInPos,
+					bAblaufAktiv := fbSchrittbetrieb.bAblaufAktiv OR bTeilBearbeiten);
+					
+fbSchrittbetrieb.bAblaufAktiv := FALSE;
+
+//********************************************************************************					
+//Handzyklus
+//IF			bBtnHandZyklus THEN
+//	bBtnHandZyklus := FALSE;
+//	
+//	IF			stStationInfo.bZyklusFertig
+//		AND		bRstInPos
+//		AND NOT MAIN.bProduzieren THEN
+//		IF			MAIN.hatAufnBeiStJob(stStationInfo.nStationsNr) THEN							//Aufnahme will bearbeitet werden (Teile wurden schon bestellt)
+//			ifStation.bearbeitenAnfordern(MAIN.getAufnahmeBeiStation(stStationInfo.nStationsNr));	//Aktuelle Aufnahme wird verwendet
+//		ELSE																						//Aufnahme will NICHT bearbeitet werden (Teile müssen bestellt werden)
+//			MAIN.vorwahlPseudoaufnahme();
+//			ifStation.bearbeitenAnfordern(Parameter.cAnzAufnahmen+1);								//Pseudoaufnahme wird verwendet
+//		END_IF	
+//	END_IF
+//END_IF
+
+//********************************************************************************					
+//Init
+IF			stStationInfo.bInit
+	AND NOT stStationInfo.bReset THEN
+	stStationInfo.bInit := NOT ifStation.init();
+END_IF
+
+//********************************************************************************
+//Reset
+IF			bBtnReset THEN
+	bBtnReset := FALSE;
+	extReset();
+END_IF
+
+IF			stStationInfo.bReset THEN
+	stStationInfo.bReset := NOT ifStation.reset();
+END_IF
+
+IF		NOT MAIN.bE_NotHalt THEN
+	eResetStatus := ResetStatus.bereit;
+END_IF
+
+//********************************************************************************					
+//Ablauf
+IF			stStationInfo.bInitBeendet 
+	AND NOT stStationInfo.bReset
+	AND NOT fbSchrittbetrieb.bInQueue THEN
+	
+	IF 			bTeilBearbeiten THEN
+		bTeilBearbeiten := NOT ifStation.teilBearbeiten();
+	END_IF
+END_IF
+
+//********************************************************************************
+//Statusanzeige
+IF			stStationInfo.bReset THEN
+	stStationInfo.sStatus := CONCAT('reset: ', TO_STRING(eResetStatus));
+ELSIF			stStationInfo.bInit THEN
+	stStationInfo.sStatus := CONCAT('init: ', TO_STRING(eInitStatus));
+ELSIF			stStationInfo.bInitBeendet THEN
+	stStationInfo.sStatus := TO_STRING(eAblaufStatus);
+ELSE
+	stStationInfo.sStatus := 'default';
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="bearbeitenAnfordern" Id="{bc50bf23-51a4-4fa0-8c91-b17b5b6a500d}">
+      <Declaration><![CDATA[METHOD bearbeitenAnfordern
+VAR_INPUT
+	nAufnahme:		int;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bTeilBearbeiten := TRUE;
+nAufnahmeNr := nAufnahme;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="extReset" Id="{50aae4f2-5ad8-48b8-9ee5-62fdddd9ddb3}">
+      <Declaration><![CDATA[METHOD extReset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[eResetStatus := ResetStatus.bereit;			//Reset neu Starten bei jedem Drücken
+stStationInfo.bReset := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Station">
+      <LineId Id="147" Count="1" />
+      <LineId Id="145" Count="0" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="196" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="198" Count="1" />
+      <LineId Id="243" Count="0" />
+      <LineId Id="259" Count="5" />
+      <LineId Id="297" Count="0" />
+      <LineId Id="301" Count="0" />
+      <LineId Id="265" Count="2" />
+      <LineId Id="299" Count="0" />
+      <LineId Id="269" Count="2" />
+      <LineId Id="242" Count="0" />
+      <LineId Id="272" Count="0" />
+      <LineId Id="62" Count="11" />
+      <LineId Id="75" Count="4" />
+      <LineId Id="150" Count="2" />
+      <LineId Id="149" Count="0" />
+      <LineId Id="80" Count="4" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="85" Count="4" />
+      <LineId Id="110" Count="10" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Station.bearbeitenAnfordern">
+      <LineId Id="5" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Station.extReset">
+      <LineId Id="9" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

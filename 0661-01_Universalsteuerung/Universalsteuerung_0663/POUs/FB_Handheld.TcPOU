@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Handheld" Id="{5c525b99-8183-47d7-83a4-ced87fc372b9}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Handheld
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+	fbVorTrig:				R_TRIG;
+	fbZurueckTrig:			R_TRIG;
+	nGewaehlteStation:		INT;
+END_VAR
+VAR
+	bE_TasteVor				AT%I*:	BOOL;
+	bE_TasteZurueck			AT%I*:	BOOL;
+	bE_Zustimmtaster		AT%I*:	BOOL;
+	
+	bA_LampeHandheld		AT%Q*:	BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//********************************************************************************
+//Handheld
+fbVorTrig(CLK := bE_TasteVor AND bE_Zustimmtaster);
+fbZurueckTrig(CLK := bE_TasteZurueck AND bE_Zustimmtaster);
+
+bA_LampeHandheld := bE_Zustimmtaster AND MAIN.bE_Handbetrieb;]]></ST>
+    </Implementation>
+    <LineIds Name="FB_Handheld">
+      <LineId Id="18" Count="3" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

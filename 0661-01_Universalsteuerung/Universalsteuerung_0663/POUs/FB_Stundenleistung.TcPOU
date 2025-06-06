@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Stundenleistung" Id="{f50dbfd1-2927-44bc-8907-9a1acc06c8bb}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Stundenleistung
+VAR_INPUT
+	fZyklusZeitTask: 		REAL;
+	bProduzieren:			BOOL;
+	nStueckZaehlerAnlage:	UDINT;		
+	bInitBeendet:			BOOL;
+END_VAR
+
+VAR_OUTPUT
+	fStundenLeistung:		REAL;
+END_VAR
+
+VAR
+	fZykluszaehler:			REAL;
+	fAktZaehler:			REAL;
+	bAktualisieren:			BOOL;
+	fbFlankeInit:			R_TRIG;
+	nStueckzaehlerStart:	UDINT;
+	nStueckZahlBerechnet:	UDINT;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Nach Init aktuellen Zählerstand abspeichern
+fbFlankeInit(CLK:=bInitBeendet);
+IF			fbFlankeInit.Q THEN
+	nStueckzaehlerStart := nStueckZaehlerAnlage;
+	fAktZaehler := 0;
+END_IF
+
+// Zählerstand rechnen
+nStueckZahlBerechnet := nStueckZaehlerAnlage - nStueckzaehlerStart;
+
+
+IF bProduzieren THEN
+	IF			Parameter.cAktRateStundenLeistung <= fZykluszaehler * (fZyklusZeitTask/1000) THEN
+		bAktualisieren := TRUE;
+		fZykluszaehler := 0;
+		fAktZaehler := fAktZaehler + 1;
+	ELSE
+		bAktualisieren := FALSE;
+		fZykluszaehler := fZykluszaehler + 1;
+	END_IF
+END_IF
+
+
+IF			Parameter.cAktRateStundenLeistung 	> 0
+	AND		fAktZaehler > 0 
+	AND		bAktualisieren	THEN
+	fStundenLeistung := UDINT_TO_REAL(nStueckZahlBerechnet) / ((Parameter.cAktRateStundenLeistung * fAktZaehler)/3600);
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_Stundenleistung">
+      <LineId Id="3" Count="27" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

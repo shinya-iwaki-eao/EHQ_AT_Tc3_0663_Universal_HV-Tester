@@ -1,0 +1,139 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Event" Id="{89a7a39d-d29e-4485-8727-034be5441a2a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Event
+VAR_INPUT
+	nID:			INT;
+	ipArguments:	Tc3_EventLogger.I_TcArguments;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	sText:			STRING(255);
+	sSeverity:		STRING;
+	
+	bInit:			BOOL := TRUE;
+	bIsRaised:		BOOL;
+	
+	
+	fbArguments:	FB_Arguments;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ipArguments := fbArguments;
+
+IF			bInit THEN
+	bInit := FALSE;
+	fbArguments.sOriginalString := sText;
+END_IF
+
+fbArguments(sOutText => sText, iInterfacePointer := ipArguments);]]></ST>
+    </Implementation>
+    <Property Name="bRaised" Id="{cd918912-3ed8-4b97-b728-92a6a1a90877}">
+      <Declaration><![CDATA[PROPERTY bRaised : Bool]]></Declaration>
+      <Get Name="Get" Id="{c515fc13-ddf1-470d-9fdc-e7e061add2b5}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[bRaised := bIsRaised;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Clear" Id="{49a59f45-c26f-480e-a5e8-140695b0c0e0}">
+      <Declaration><![CDATA[METHOD Clear
+VAR_INPUT
+	a:	INT;
+	b: BOOL;
+
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bIsRaised := FALSE;
+EventLogger.unpinEvent(nID);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Raise" Id="{4120ae0f-71dc-4e79-9ed1-627f83fbcb3e}">
+      <Declaration><![CDATA[METHOD Raise
+VAR_INPUT
+	a:	INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bIsRaised := TRUE;
+sText := fbArguments.sOutText;
+EventLogger.logEvent(nID, sText,sSeverity, TRUE);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="RequestEventText" Id="{1d294914-c055-42f6-b179-a221e4bc3b4c}">
+      <Declaration><![CDATA[METHOD RequestEventText
+VAR_INPUT
+	a:	INT;
+END_VAR
+VAR_IN_OUT
+	b:	STRING(255);
+END_VAR
+VAR_INPUT
+	c:	INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[b := sText;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="send" Id="{84687f39-e6e2-43e1-aa05-d87252ebd670}">
+      <Declaration><![CDATA[METHOD send
+VAR_INPUT
+	a:	INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sText := fbArguments.sOutText;
+EventLogger.logEvent(nID, sText,sSeverity, FALSE);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="setText" Id="{613ec003-d685-425a-9b1b-efa397c63bac}">
+      <Declaration><![CDATA[METHOD setText
+VAR_INPUT
+	sSeverity:			STRING;
+	sText:				STRING(255);
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.sSeverity := sSeverity;
+THIS^.sText := sText;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Event">
+      <LineId Id="97" Count="1" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="24" Count="1" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="69" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Event.bRaised.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Event.Clear">
+      <LineId Id="5" Count="0" />
+      <LineId Id="12" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Event.Raise">
+      <LineId Id="5" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="10" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Event.RequestEventText">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Event.send">
+      <LineId Id="10" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Event.setText">
+      <LineId Id="5" Count="0" />
+      <LineId Id="8" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="StatusGreifer" Id="{c78bbd6c-2db9-4de5-ac98-e498f6ccfa51}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE StatusGreifer :
+(
+	default := 0,
+	keinTeil,
+	teilHolen,
+	teilGeholt,
+	teilEinlegen,
+	teilEntnehmen,
+	teilEntnommen,
+	teilAblegen,
+	teilAbgelegt,
+	teilGegriffen,
+	teilGegriffenDrehen,
+	lagerplatte,
+	lagerplatteMitFeder,
+	ausschuss,
+	blockiert
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

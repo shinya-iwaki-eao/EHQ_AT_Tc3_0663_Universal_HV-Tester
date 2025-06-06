@@ -1,0 +1,538 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Arguments" Id="{2f4b86c3-73aa-43a3-8474-dfcdd1e32a6b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Arguments IMPLEMENTS Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	sOriginalString:		STRING(255);
+	iInterfacePointer:		Tc3_EventLogger.I_TcArguments;
+END_VAR
+VAR_OUTPUT
+	sOutText:				STRING(255);
+END_VAR
+VAR
+	ipArgumentsinterface:	Tc3_EventLogger.I_TcArguments;
+	bInit: 					BOOL := TRUE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF			bInit THEN
+	bInit := FALSE;
+	Clear();
+END_IF
+]]></ST>
+    </Implementation>
+    <Method Name="AddBlob" Id="{875da798-9b04-43b9-b2bb-cabb22622ed0}">
+      <Declaration><![CDATA[METHOD AddBlob : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	pData	: Tc3_EventLogger.PVOID;
+	cbData	: UINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddBool" Id="{550c5e5e-51b9-4872-b477-1677f0600b2b}">
+      <Declaration><![CDATA[METHOD AddBool : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: BOOL;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := BOOL_TO_STRING(value);
+AddString(sValue);
+AddBool := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddByte" Id="{85534321-4a35-4332-8c4a-bfb2f277ecf2}">
+      <Declaration><![CDATA[METHOD AddByte : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: BYTE;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (BYTE_TO_STRING(value));
+AddString(sValue);
+AddByte := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddDInt" Id="{619ad327-6da6-47b0-860f-7b4efee6a90f}">
+      <Declaration><![CDATA[METHOD AddDInt : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: DINT;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (DINT_TO_STRING(value));
+AddString(sValue);
+AddDInt := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddDWord" Id="{f6f20f8b-f4ae-4b8d-93cc-8bc6a67ddf6d}">
+      <Declaration><![CDATA[METHOD AddDWord : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: DWORD;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (DWORD_TO_STRING(value));
+AddString(sValue);
+AddDWord := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddEventReferenceEx" Id="{55f7b3fe-899d-4d5c-aa68-5b29f6b3721f}">
+      <Declaration><![CDATA[METHOD AddEventReferenceEx : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	stEventEntry	: Tc3_EventLogger.TcEventEntry;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddEventReferenceId" Id="{7529b9ca-c485-4827-ba9e-c4c796dfff7e}">
+      <Declaration><![CDATA[METHOD AddEventReferenceId : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	nEventId	: UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddEventReferenceIdGuid" Id="{7343f831-c2de-44b7-ab52-c0a5c43fd93d}">
+      <Declaration><![CDATA[METHOD AddEventReferenceIdGuid : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	nEventId	: UDINT;
+	EventClass	: Tc3_EventLogger.GUID;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddInt" Id="{2a79c6a0-cbf7-4cd5-ac6d-57e99e13ef9f}">
+      <Declaration><![CDATA[METHOD AddInt : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: INT;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (INT_TO_STRING(value));
+AddString(sValue);
+AddInt := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddLInt" Id="{5a8aad80-fb00-4047-928d-683ad9a4c514}">
+      <Declaration><![CDATA[METHOD AddLInt : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: LINT;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (LINT_TO_STRING(value));
+AddString(sValue);
+AddLInt := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddLReal" Id="{1a617b08-6423-4282-bfa6-893eabba7116}">
+      <Declaration><![CDATA[METHOD AddLReal : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: LREAL;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (LREAL_TO_STRING(value));
+AddString(sValue);
+AddLReal := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddReal" Id="{a863ca27-c5ef-4e76-a329-abb73f1dd5f6}">
+      <Declaration><![CDATA[METHOD AddReal : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: REAL;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (REAL_TO_STRING(value));
+AddString(sValue);
+AddReal := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddSInt" Id="{49f9be51-0e62-42e2-8033-71648ca00118}">
+      <Declaration><![CDATA[METHOD AddSInt : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: SINT;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (SINT_TO_STRING(value));
+AddString(sValue);
+AddSInt := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddString" Id="{67feb8ac-ed9e-4a3d-9816-2ca62643e197}">
+      <Declaration><![CDATA[METHOD AddString : Tc3_EventLogger.I_TcArguments
+VAR_IN_OUT CONSTANT
+	value	: STRING;
+END_VAR
+VAR
+	nPosition:		INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[nPosition := getNextPlaceholder();
+IF			(nPosition > 0) THEN
+	sOutText := INSERT(Delete(sOutText, 3, nPosition), value, nPosition-1);
+END_IF
+
+AddString := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddStringByValue" Id="{162ad298-68ba-4b19-999d-6862b7f56066}">
+      <Declaration><![CDATA[METHOD AddStringByValue : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: Tc3_EventLogger.T_MaxString;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddUDInt" Id="{84e039a9-baa7-4733-8b4f-bb3152628288}">
+      <Declaration><![CDATA[METHOD AddUDInt : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: UDINT;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (UDINT_TO_STRING(value));
+AddString(sValue);
+AddUDInt := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddUInt" Id="{c334a718-914e-4d55-b26b-41cd92905ed2}">
+      <Declaration><![CDATA[METHOD AddUInt : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: UINT;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (UINT_TO_STRING(value));
+AddString(sValue);
+AddUInt := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddULInt" Id="{dd7f2def-fe53-4099-b8fb-249c8d9b93b6}">
+      <Declaration><![CDATA[METHOD AddULInt : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: ULINT;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (ULINT_TO_STRING(value));
+AddString(sValue);
+AddULInt := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddUSInt" Id="{162ae065-474b-4ef6-a88b-4d860af857fb}">
+      <Declaration><![CDATA[METHOD AddUSInt : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: USINT;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (USINT_TO_STRING(value));
+AddString(sValue);
+AddUSInt := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddUtf8EncodedString" Id="{54b62175-b051-46a3-92b0-5d151e61a660}">
+      <Declaration><![CDATA[METHOD AddUtf8EncodedString : Tc3_EventLogger.I_TcArguments
+VAR_IN_OUT CONSTANT
+	value	: STRING;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddWord" Id="{73310218-f73b-4601-be6c-b60df8d4956b}">
+      <Declaration><![CDATA[METHOD AddWord : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: WORD;
+END_VAR
+VAR
+	sValue:	STRING;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sValue := (WORD_TO_STRING(value));
+AddString(sValue);
+AddWord := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddWString" Id="{8cbcabeb-001e-45d4-a01c-5ad1646542da}">
+      <Declaration><![CDATA[METHOD AddWString : Tc3_EventLogger.I_TcArguments
+VAR_IN_OUT CONSTANT
+	value	: WSTRING;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AddWStringByValue" Id="{1c64c112-3fa0-446f-ab74-32a273522483}">
+      <Declaration><![CDATA[METHOD AddWStringByValue : Tc3_EventLogger.I_TcArguments
+VAR_INPUT
+	value	: WSTRING(255);
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Clear" Id="{7ab18b35-e651-4e2b-9505-0030e005715f}">
+      <Declaration><![CDATA[METHOD Clear : Tc3_EventLogger.I_TcArguments
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sOutText := sOriginalString;
+Clear := iInterfacePointer;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getNextPlaceholder" Id="{25bb079a-ce4d-4632-a1cf-9b6887d170a3}">
+      <Declaration><![CDATA[METHOD getNextPlaceholder : INT
+VAR_INPUT
+END_VAR
+VAR
+	sText:					STRING(255);
+	nPosition:				INT;
+	nPlaceholder:			INT;
+	nNextPlaceholder:		INT := 32767;
+	nNextPlaceholderPos:	INT;
+	
+	nDeleted:				INT;
+	
+	bNoMorePlaceholders:	BOOL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sText := sOutText;
+
+REPEAT
+	nPosition := FIND(sText, '{');
+	
+	IF			(nPosition > 0) THEN
+		nPlaceholder := STRING_TO_INT(MID(sText, 1, nPosition+1));
+		
+		IF			(nPlaceholder < nNextPlaceholder) THEN
+			nNextPlaceholder := nPlaceholder;
+			nNextPlaceholderPos := nPosition+nDeleted;
+		END_IF
+		
+		sText := Delete(sText, nPosition+2, 1);		//Alles bis zum Plazhalter löschen
+		nDeleted := nDeleted+nPosition+2;
+		
+	ELSE
+		bNoMorePlaceholders := TRUE;
+	END_IF
+	
+UNTIL 
+	bNoMorePlaceholders
+END_REPEAT
+
+getNextPlaceholder := nNextPlaceholderPos;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="ipData" Id="{878d5534-4c75-4eb0-8db9-aadfd9015a47}">
+      <Declaration><![CDATA[PROPERTY ipData : Tc3_EventLogger.ITcArguments
+]]></Declaration>
+      <Get Name="Get" Id="{d7d46211-1d8a-47d4-8fe0-600a8b3ba4d0}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="nCount" Id="{d63fde19-71d8-4e28-bc40-c2c00481cef7}">
+      <Declaration><![CDATA[PROPERTY nCount : UDINT
+]]></Declaration>
+      <Get Name="Get" Id="{172dc9fa-8d70-4423-8a80-0569cae84136}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <LineIds Name="FB_Arguments">
+      <LineId Id="20" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="31" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddBlob">
+      <LineId Id="8" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddBool">
+      <LineId Id="24" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddByte">
+      <LineId Id="25" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddDInt">
+      <LineId Id="25" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddDWord">
+      <LineId Id="24" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddEventReferenceEx">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddEventReferenceId">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddEventReferenceIdGuid">
+      <LineId Id="8" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddInt">
+      <LineId Id="33" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="19" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddLInt">
+      <LineId Id="24" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddLReal">
+      <LineId Id="24" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddReal">
+      <LineId Id="24" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddSInt">
+      <LineId Id="26" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="23" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddString">
+      <LineId Id="8" Count="2" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="19" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddStringByValue">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddUDInt">
+      <LineId Id="16" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddUInt">
+      <LineId Id="16" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddULInt">
+      <LineId Id="16" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddUSInt">
+      <LineId Id="16" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddUtf8EncodedString">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddWord">
+      <LineId Id="16" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddWString">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.AddWStringByValue">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.Clear">
+      <LineId Id="5" Count="0" />
+      <LineId Id="4" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.getNextPlaceholder">
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="29" Count="1" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="19" Count="1" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="46" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.ipData.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Arguments.nCount.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

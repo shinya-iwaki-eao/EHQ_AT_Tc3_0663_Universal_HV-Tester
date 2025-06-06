@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="Tools" Id="{30ed2c2e-5277-45ca-b09f-479539575525}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Tools
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="inToleranz" Id="{5d2bf1ed-903e-4a2c-abac-faade7c10ba8}">
+      <Declaration><![CDATA[METHOD inToleranz : BOOL
+VAR_INPUT
+	fIstwert:		REAL;
+	fMin:			REAL;
+	fMax:			REAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[inToleranz := fIstwert >= fMin AND fIstwert <= fMax;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="runden" Id="{d083471d-cb39-46e1-9e8f-d8cbf287e138}">
+      <Declaration><![CDATA[METHOD runden : REAL
+VAR_INPUT
+	fInput:			REAL;
+	nAnzStellen:	DINT;
+END_VAR
+
+VAR
+	nZwResultat:	DINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[nZwResultat := REAL_TO_DINT(fInput*EXPT(10,nAnzStellen+1));
+IF 			(nZwResultat MOD 10) >= 5THEN
+	nZwResultat := nZwResultat + 10;
+END_IF
+nZwResultat := nZwResultat / 10;
+runden		:= DINT_TO_REAL(nZwResultat)/EXPT(10,nAnzStellen);]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="Tools">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="Tools.inToleranz">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="Tools.runden">
+      <LineId Id="6" Count="0" />
+      <LineId Id="15" Count="3" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

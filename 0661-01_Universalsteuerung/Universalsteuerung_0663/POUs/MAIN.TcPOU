@@ -1,0 +1,776 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MAIN" Id="{747e81a4-805d-43b2-aecc-0cdd5a1ff21a}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR_INPUT	
+	//Aktoren
+	bPosNachHbNio:			BOOL;
+	
+	//FBs
+	HMI:					FB_Hmi;	
+	fbTurmleuchte:			FB_Turmleuchte;
+	
+	nAusschussZaehler:		INT;
+	bLampeStoerung:			BOOL;
+	
+	stAufnahmeInfo:			ST_AufnahmeInfo;
+	bProduzieren:			BOOL;
+	bAuftragLaeuft:			BOOL;
+	bZyklusZeitMessStart:	BOOL;
+	bWritePersistentMan:	BOOL;
+	fbSt1:					FB_Station01;	
+
+END_VAR
+VAR
+	//Safety
+	bE_NotHalt				AT%I*:	BOOL;
+	bA_SafetyReset			AT%Q*:	BOOL;
+	bA_SafetyRun			AT%Q*:	BOOL := TRUE;   
+	bA_TasteNHReset			AT%Q*:	BOOL;
+	bA_Hauptventil			AT%Q*:	BOOL;
+    
+	bE_SafetyComErr			AT%I*:	BOOL;
+	bE_SafetyOtherErr		AT%I*:	BOOL;
+	bE_SafetyProgStop		AT%I*:	BOOL;
+	bE_busVerbVerloren 		AT%I*:	BOOL;		//Busverbindung verloren (WC STATE Klemme 1)
+	bE_SafetyInRun			AT%I*:	BOOL;
+	bE_TasteNHReset			AT%I*:	BOOL;
+	bE_LampeNHReset			AT%I*:	BOOL;
+	bE_LampeNotHalt			AT%I*:	BOOL;
+	
+	bE_Handbetrieb:					BOOL;	
+	
+	//Tasten
+	bE_Taste_Start			AT%I*:	BOOL;
+	bE_Fussschalter			AT%I*:	BOOL;
+	bE_Taste_Stop			AT%I*:	BOOL;
+	bE_Taste_Stoerung		AT%I*:	BOOL;
+	bE_Taste_Schritt		AT%I*:	BOOL;
+	
+	//Lampen
+	bA_Lampe_Start			AT%Q*:	BOOL;
+	bA_Lampe_Stop			AT%Q*:	BOOL;
+	bA_Lampe_Stoerung		AT%Q*:	BOOL;
+	bA_Lampe_NHReset		AT%Q*:	BOOL;
+	bA_Lampe_NotHalt		AT%Q*:	BOOL;
+	bA_Lampe_Schritt		AT%Q*:	BOOL;
+	
+	//Tasten Flanken
+	fbStartFlanke:			R_TRIG;
+	fbStopFlanke:			R_TRIG;
+	fbStoerungFlanke:		R_TRIG;
+
+	
+	//Sonstige Inputs
+	bE_LuftdruckIO			AT%I*:	BOOL;	
+	
+	//Init
+	eInitStatus:			InitStatus := InitStatus.bereit;
+	
+	//Stationen
+	aStationInfo:			ST_Station;
+	bInitStNr:				BOOL := TRUE;
+	
+	//MQTT
+	//fbMqttApromace:			FB_MqttApromace;
+	nStoerungsgrund:		INT;
+	
+	//Sonstiges
+	i:						INT;
+	sMqttStatus:			STRING;
+	sMqttVorher:			STRING;
+	fbSystemZeit:			NT_GetTime;
+	
+	eStartAblauf1:			AblaufStatus := AblaufStatus.bereit;
+	//fbStartMessage:			FB_Message;
+	
+	sFehlerText:			STRING(255);	
+	bStoerung:				BOOL;
+	bWarnung:				BOOL;
+	
+	bLampenTest:			BOOL;
+	
+	bInitBeendet:			BOOL;
+	
+	SafetyAck: 				INT:=1;
+	fbErrTP: 				TP;
+	
+	
+	bZyklusGestartet:		BOOL;
+	bStopNachZyklus:		BOOL;
+		
+	//Stationen
+	//fbSt1:					FB_Station01;	
+
+	
+	//Sonstige FBs	
+	fbBlinkZeit:			TON;
+	fbWritePersistentData: 	WritePersistentData;
+	fbWritePersistent:		R_TRIG;
+	fbTofLuft:				TOF;
+	fbHandheld:				FB_Handheld;
+	fbUsv:					FB_S_UPS_CB3011;
+	
+	
+	
+	//IPC Daten
+	sSrcNetId: 				T_AmsNetId;						//Lokale NetId
+	
+	// Zykluszeit
+	fbZyklusZeitGesamt:		FB_Zykluszeit;
+	
+	//FB's Überstromschutzklemmen (ACHTUNG: Nicht die neuste Version)
+	fb601A2: 				FB_EL9227(	nErrorId:= 260, 
+										sBezeichnung:= '601A2');		
+	fb601A5: 				FB_EL9227(	nErrorId:= 260, 
+										sBezeichnung:= '601A5');							
+	
+	//Stundenleistung
+	fSummeZyklus:			REAL;
+	fStundenLeistung:		REAL;
+	idx1:					INT := 1;
+	idx2:					INT;
+	fbStundenLeistungFlanke:R_TRIG;	
+	fbStundenleistung:		FB_Stundenleistung;
+	
+	bProgStop:				BOOL;
+	
+	fbStatusPunkteZeit:		TON;
+	sStatus:				STRING(255);
+	nPunkte:				INT;
+	
+	sText:					STRING(255);	
+	
+	
+	CLK: INT;
+	fbWartung:				FB_Wartung;
+END_VAR
+
+
+VAR_INPUT PERSISTENT
+	sAuftragVorher:			STRING;
+	nMonatVorher:			WORD;
+	nTagVorher:				WORD;
+	stStueckzaehler:		ST_Stueckzaehler;
+	fBetriebsstunden:		LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Not-Halt von allen Stationen zusammenfassen
+
+
+
+bA_TasteNHReset := bE_TasteNHReset;
+bProgStop := bPosNachHbNio;
+
+IF			bE_SafetyProgStop THEN
+	bProgStop := TRUE;
+END_IF
+				
+IF			bPosNachHbNio THEN
+	bLampeStoerung := TRUE;
+END_IF
+bPosNachHbNio := FALSE;					//muss unter der verwendung sein, dass alle aktoren im Zyklus überschreiben können
+
+//***********************************************************************************************
+//Init StationsNr
+IF			bInitStNr THEN
+	bInitStNr := FALSE;
+	FOR i := 0 TO Parameter.cAnzStationen DO
+		aStationInfo.nStationsNr := i;
+	END_FOR
+END_IF
+
+//***********************************************************************************************
+//Stationen
+fbSt1(	ifStation := fbSt1,
+		stStationInfo := aStationInfo);
+
+
+//MQTT
+//fbMqttApromace(	sAnlagename:= 'DIV_Universalsteuerung_0661.0000-01',
+//				sWerk:= 'EHQ');
+
+//***********************************************************************************************
+//Sontige FBs und PRGs
+fbStartFlanke(CLK := bE_Taste_Start OR bE_Fussschalter);
+fbStopFlanke(CLK := NOT bE_Taste_Stop);
+fbStoerungFlanke(CLK := bE_Taste_Stoerung);
+
+
+
+
+
+EventLogger();
+HMI();
+Lampen();
+
+fbSystemZeit(	NETID := sSrcNetId,
+				START := NOT fbSystemZeit.START);
+
+// Persistente Daten schreiben über Button "bWritePersistentMan" oder über bE_BusVerbVerloren	
+fbWritePersistent(CLK := bWritePersistentMan);			
+fbWritePersistentData.START :=	fbWritePersistent.Q;
+fbWritePersistentData(NETID:='', PORT:=851, TMOUT:=T#1S);
+IF			fbWritePersistentData.BUSY THEN
+	MAIN.bWritePersistentMan := FALSE;
+END_IF
+
+
+fbUsv(	ePersistentMode := SPDM_2PASS,
+		eUpsMode :=  eSUPS_WrPersistData_Shutdown,
+		sNetID := '',
+		iPLCPort := 851,
+		tTimeout := DEFAULT_ADS_TIMEOUT,
+		tRecoverTime := T#10S);
+
+
+
+//***********************************************************************************************
+//Init
+init();
+
+//***********************************************************************************************
+//Reset
+IF			(bInitBeendet
+	OR		(eInitStatus <> InitStatus.bereit))
+	AND NOT bE_NotHalt THEN
+	bProduzieren := FALSE;
+	bStopNachZyklus := FALSE;
+	bZyklusGestartet := FALSE;	
+	bInitBeendet := FALSE;
+	eInitStatus := InitStatus.bereit;
+	bA_Hauptventil := FALSE;
+	
+	aStationInfo.bInitBeendet := FALSE;
+	aStationInfo.bReset := TRUE;
+
+END_IF
+
+//Start Ablauf
+CASE eStartAblauf1 OF
+	
+	//***********************************************************************************************	
+	AblaufStatus.bereit:		
+		IF			(fbStartFlanke.Q
+			OR		 MAIN.HMI.ProgrammTemp.nFussschalterAktiv = 0)
+			AND		fbst1.bNotHaltTestIO
+			AND		bInitBeendet
+			AND		MAIN.HMI.bProgrammgeladen
+			//AND		HMI.bAuftragGeladen
+			AND  	aStationInfo.bZyklusFertig
+			AND NOT bE_Handbetrieb
+			AND NOT	bProgStop
+			AND		bE_LuftdruckIO
+			AND NOT bProduzieren THEN
+				fbSt1.bearbeitenAnfordern(1);
+				eStartAblauf1 := AblaufStatus.produziert;
+				bZyklusZeitMessStart := FALSE;
+		END_IF
+
+	//***********************************************************************************************	
+	AblaufStatus.produziert:
+		bZyklusZeitMessStart := TRUE;
+		IF		 aStationInfo.bZyklusFertig THEN
+			eStartAblauf1 := AblaufStatus.bereit;
+			
+		END_IF
+END_CASE
+
+
+
+//*****************************************************************
+//Start Fehlermeldungen
+IF			fbStartFlanke.Q
+	AND 	bE_SafetyProgStop THEN
+	EventLogger.aErrorLog[230].Send(0);
+END_IF
+//*****************************************************************
+IF			fbStartFlanke.Q
+	AND 	bPosNachHbNio THEN
+	EventLogger.aErrorLog[231].Send(0);
+END_IF
+//*****************************************************************
+IF			fbStartFlanke.Q
+	AND 	bE_Handbetrieb THEN
+	EventLogger.aErrorLog[232].Send(0);
+END_IF
+//*****************************************************************	
+IF			fbStartFlanke.Q
+	AND NOT bInitBeendet THEN
+	EventLogger.aErrorLog[233].Send(0);
+END_IF
+//*****************************************************************
+IF			fbStartFlanke.Q
+	AND NOT HMI.bAuftragGeladen THEN
+	EventLogger.aErrorLog[234].Send(0);
+END_IF
+//*****************************************************************
+IF			fbStartFlanke.Q
+	AND 	(nAusschussZaehler >= Parameter.nAnzAusschussBisStoerung) THEN
+	EventLogger.aErrorLog[235].Send(0);
+END_IF
+
+//***********************************************************************************************
+//Produktion läuft
+IF		NOT aStationInfo.bZyklusFertig THEN
+	bProduzieren := TRUE;
+END_IF
+
+
+IF		NOT aStationInfo.bZyklusFertig
+	AND 	bInitBeendet THEN
+	bZyklusGestartet := TRUE;
+END_IF
+
+
+//***********************************************************************************************
+//Zähler zurücksetzen
+IF		 	(nTagVorher <> fbSystemZeit.TIMESTR.wDay 
+	OR 	  	nMonatVorher <> fbSystemZeit.TIMESTR.wMonth)
+	AND		fbSystemZeit.TIMESTR.wMonth > 0 THEN		//Damit der fbSystemzeit sicher ausgeführt wurde
+	stStueckzaehler.nGutteileTag := 0;
+	stStueckzaehler.nAusschussTag := 0;
+	nTagVorher := fbSystemZeit.TIMESTR.wDay;
+	nMonatVorher := fbSystemZeit.TIMESTR.wMonth;
+END_IF
+
+//***********************************************************************************************
+//Betriebsstunden
+fBetriebsstunden := fBetriebsstunden + (Parameter.fZyklusZeitTask/3600000);
+
+//Zykluszeiten	
+
+IF			bInitBeendet THEN	
+	fbZyklusZeitGesamt(	bStart			:= 		bZyklusZeitMessStart,
+						fZyklusZeitTask	:= Parameter.fZyklusZeitTask);
+END_IF
+
+
+fbStundenLeistungFlanke(CLK :=  aStationInfo.bZyklusFertig);
+
+//Stundenleistung	
+fbStundenleistung(fZyklusZeitTask := Parameter.fZyklusZeitTask,
+					bProduzieren := bProduzieren,
+					nStueckZaehlerAnlage := stStueckzaehler.nGutteileGesamt,
+					bInitBeendet := bInitBeendet,
+					fStundenLeistung => fStundenLeistung);
+					
+//***********************************************************************************************
+// Lampensäule Gruen
+IF 		NOT bInitBeendet THEN
+	fbTurmleuchte.warnung();
+ELSIF		NOT Main.bProgStop 
+		AND		bProduzieren THEN
+	fbTurmleuchte.betrieb();
+END_IF
+
+//***********************************************************************************************
+//Störungen
+
+
+// Luftdruck n.i.O Meldung
+fbTofLuft(IN:=bE_LuftdruckIO, PT:= T#500MS);
+
+IF		NOT	fbTofLuft.Q 
+	AND 	bInitBeendet
+	AND	NOT	EventLogger.aAlarm[257].bRaised THEN
+	EventLogger.aAlarm[257].Raise(0);
+	
+ELSIF		bE_LuftdruckIO
+	AND		EventLogger.aAlarm[257].bRaised THEN
+	EventLogger.aAlarm[257].Clear(0, TRUE);
+END_IF
+
+
+//Zusammenfassung Störungen
+bStoerung := FALSE;
+nStoerungsgrund := 0;
+FOR i:=1 TO Parameter.cAnzEvents DO
+	IF			EventLogger.aAlarm[i].bRaised THEN
+		bStoerung := TRUE;
+		nStoerungsgrund := i;
+		EventLogger.aAlarm[i].RequestEventText(2055, sText, SIZEOF(sText));		
+		//UTF8_TO_STRING(pDstSTRING := ADR(sFehlerText), pSrcUTF8 := ADR(sText), nDstsize := SIZEOF(sFehlerText));
+		sFehlerText := sText;
+	END_IF
+END_FOR
+
+IF		NOT bStoerung THEN
+	sFehlerText := '';
+END_IF
+
+IF			aStationInfo.bStoerung THEN
+	bStoerung := TRUE;
+END_IF
+
+
+// Störungen der Überstromschutzklemmen
+fb601A2();				
+fb601A5();
+IF			fb601A2.bStoerung 
+		OR	fb601A5.bStoerung THEN
+	bStoerung := TRUE;
+END_IF
+
+IF			bPosNachHbNio THEN
+	bStoerung := TRUE;
+END_IF
+
+IF			bStoerung
+	OR		bE_SafetyProgStop THEN
+	fbTurmleuchte.stoerung();
+END_IF
+
+
+//***********************************************************************************************
+//Warnungen
+bWarnung := FALSE;
+IF			aStationInfo.bWarnung THEN
+	bWarnung := TRUE;
+	fbTurmleuchte.warnung();
+END_IF
+
+
+//Maschinenstatus	(noch schön machen!) (lesen fertig und abgebrochen und so wird trozdem überschrieben)
+IF			bE_Handbetrieb THEN
+	HMI.StatusbarSetzen('Handbetrieb aktiviert', StatusbarFarbe.orange);
+	sMqttStatus := 'handbetrieb';
+ELSIF		bStoerung THEN
+	
+	IF			sFehlerText <> '' THEN
+		HMI.StatusbarSetzen(sFehlerText, StatusbarFarbe.rot);
+	ELSE
+		HMI.StatusbarSetzen('Störung (Infos im Event Logger)', StatusbarFarbe.rot);
+	END_IF
+	IF			bPosNachHbNio THEN
+		HMI.StatusbarSetzen('Falsche Position beim Verlassen des Handbetriebs (siehe Eventlogger)', StatusbarFarbe.rot);
+	END_IF
+	IF			fb601A2.bStoerung THEN
+		HMI.StatusbarSetzen('Störung der Sicherungsklemme 601A2 (siehe Eventlogger)', StatusbarFarbe.rot);
+	END_IF
+	IF			fb601A5.bStoerung THEN
+		HMI.StatusbarSetzen('Störung der Sicherungsklemme 601A5 (siehe Eventlogger)', StatusbarFarbe.rot);
+	END_IF
+	
+	sMqttStatus := 'steht';
+ELSIF		bWarnung THEN
+	HMI.StatusbarSetzen('Eine Warnung steht an (Infos im Event Logger)', StatusbarFarbe.orange);
+	sMqttStatus := 'warnung';
+ELSIF		bProduzieren THEN
+	sStatus := 'Produziert im Zyklusbetrieb';
+	
+	FOR	i := 0 TO nPunkte DO
+		sStatus := CONCAT(sStatus, ' .');
+	END_FOR	
+
+	HMI.StatusbarSetzen(sStatus, StatusbarFarbe.gruen);
+	sMqttStatus := 'produziert';
+ELSE	
+	IF			bInitBeendet THEN
+		HMI.StatusbarSetzen('Bereit', StatusbarFarbe.gruen);
+		sMqttStatus := 'bereit';
+	ELSIF		(eInitStatus = InitStatus.bereit) THEN
+		HMI.StatusbarSetzen('Bitte Initialisierung Starten (Blaue Taste betätigen)' , StatusbarFarbe.blau);
+		sMqttStatus := 'init';
+	ELSE
+		sStatus := 'Initialisiert';
+		
+		FOR	i := 0 TO nPunkte DO
+			sStatus := CONCAT(sStatus, ' .');
+		END_FOR
+		
+		HMI.StatusbarSetzen(sStatus, StatusbarFarbe.gruen);
+		sMqttStatus := 'init';
+	END_IF
+END_IF
+
+//Punkte
+fbStatusPunkteZeit(PT := T#300MS, IN := TRUE);
+			
+IF			fbStatusPunkteZeit.Q THEN
+	IF			nPunkte < 5 THEN
+		nPunkte := nPunkte+1;
+	ELSE
+		nPunkte := 0;
+	END_IF
+	fbStatusPunkteZeit(IN := FALSE);
+END_IF
+
+
+// Fehlermldung Safety neustarten
+IF		NOT bE_SafetyInRun THEN
+	IF 	NOT	EventLogger.aAlarm[100].bRaised THEN
+		EventLogger.aAlarm[100].Raise(0);
+	END_IF	
+END_IF
+
+IF			bE_SafetyInRun THEN
+	IF		EventLogger.aAlarm[100].bRaised THEN
+		EventLogger.aAlarm[100].Clear(0, TRUE);
+	END_IF
+END_IF
+
+bA_Lampe_Schritt := MAIN.fbSt1.bSchrittbetriebAktiv AND MAIN.HMI.bProgrammgeladen;
+
+safetyReset();
+fbTurmleuchte();		
+fbTurmleuchte.reset(); //Alle meldungen zurücksetzten, damit jeder Programmteil neue senden kann]]></ST>
+    </Implementation>
+    <Method Name="auftragAnfordern" Id="{36fd8358-d1f4-42b0-aa39-c6ff88484ec3}">
+      <Declaration><![CDATA[METHOD auftragAnfordern	:ST_AufnahmeInfo
+VAR_INPUT
+END_VAR
+VAR
+	stAufnahmeInfo:			ST_AufnahmeInfo;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF			(stStueckzaehler.nGutteileAuftrag >= ArtikelParam.akt.nAuftragsMenge)
+	AND		(ArtikelParam.akt.nAuftragsMenge <> 0) THEN
+	bStopNachZyklus := TRUE;
+END_IF
+
+
+IF			bStopNachZyklus THEN
+	stAufnahmeInfo.stArtParam.sArtikel := '';
+ELSE
+	stAufnahmeInfo.stArtParam := ArtikelParam.akt;
+END_IF
+
+auftragAnfordern := stAufnahmeInfo;]]></ST>
+      </Implementation>
+    </Method>
+    <Action Name="init" Id="{f0327124-6e30-44ea-a3ed-a1f5593caf93}">
+      <Implementation>
+        <ST><![CDATA[CASE eInitStatus OF
+	
+	//********************************************************************************************************************
+	InitStatus.bereit:	
+				
+		IF 		 	bE_NotHalt
+			AND NOT bProgStop THEN 
+			eInitStatus := InitStatus.luftdruck;
+		END_IF
+		
+	//********************************************************************************************************************
+	InitStatus.luftdruck:
+		
+		bA_Hauptventil := TRUE;
+		
+		IF			bE_LuftdruckIO THEN			
+			eInitStatus := InitStatus.stationen;
+			aStationInfo.bInit := TRUE;
+		END_IF
+		
+	//********************************************************************************************************************
+	InitStatus.stationen:
+		
+		eInitStatus := InitStatus.fertig;
+		
+		aStationInfo.bZyklusFertig := TRUE;		//RST gibts nicht, darum auf Zyklus fertig setzen
+	
+		IF		NOT aStationInfo.bInitBeendet THEN
+			eInitStatus := InitStatus.stationen;
+		END_IF
+
+		
+		
+	//********************************************************************************************************************
+	InitStatus.fertig:
+
+		bInitBeendet := TRUE;
+		
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Lampen" Id="{aa6d98ea-2a81-45ea-a18e-835341be72eb}">
+      <Implementation>
+        <ST><![CDATA[//NotHalt
+fbBlinkZeit(IN := NOT fbBlinkZeit.Q, PT:= T#400MS);
+
+IF 			bE_LampeNotHalt THEN
+	IF 			fbBlinkZeit.Q THEN
+		bA_Lampe_NotHalt := NOT bA_Lampe_NotHalt;
+	END_IF
+ELSE
+	bA_Lampe_NotHalt := bE_LampeNHReset;
+END_IF
+
+//NotHalt Reset
+bA_Lampe_NHReset	:= bE_LampeNHReset;
+
+//Start/Stop
+bA_Lampe_Start 		:= 		bProduzieren AND NOT bStopNachZyklus 	OR 	bLampenTest;
+bA_Lampe_Stop 		:= NOT 	bProduzieren 							OR 	bLampenTest;
+//bA_Lampe_ProgStop 	:= 		bE_SafetyProgStop						OR 	bLampenTest;
+bA_Lampe_Stoerung	:= 		bLampeStoerung							OR	bLampenTest;
+
+//Bedienboxen
+
+
+bLampeStoerung := FALSE;]]></ST>
+      </Implementation>
+    </Action>
+    <Method Name="reset" Id="{dfbf1fe0-3b7a-40fb-af6b-4b679a432fb6}">
+      <Declaration><![CDATA[METHOD reset
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bProduzieren := FALSE;
+eInitStatus := InitStatus.bereit;
+bInitBeendet := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Action Name="safetyReset" Id="{ffc5ecef-ee3c-437d-ba70-d6fd64ee33a8}">
+      <Implementation>
+        <ST><![CDATA[//Safety Group Errorack.
+CASE SafetyAck OF
+	
+    //********************************************
+	1:         
+		IF         	bE_SafetyComErr
+			OR		bE_SafetyOtherErr  THEN
+			   SafetyAck := SafetyAck + 1;
+			   bA_SafetyRun := FALSE;
+			   fbErrTP(IN := FALSE,PT:=T#0.5S);
+		END_IF
+		
+	//********************************************			
+	2:         
+		fbErrTP(IN := TRUE,PT:=T#0.1S);
+		IF                     NOT     fbErrTP.Q THEN
+				   SafetyAck := SafetyAck + 1;
+		END_IF
+		
+	//********************************************
+	3:         
+		fbErrTP(IN := FALSE,PT:=T#0.5S);
+	   	bA_SafetyRun := TRUE;
+		SafetyAck := 1;
+                                   
+END_CASE
+
+bA_SafetyReset := fbErrTP.Q;]]></ST>
+      </Implementation>
+    </Action>
+    <Method Name="zaehlerAusschuss" Id="{ad1ff62e-4570-42a1-8ac6-c87cd562581a}">
+      <Declaration><![CDATA[METHOD zaehlerAusschuss : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stStueckzaehler.nAusschussAuftrag 	:= stStueckzaehler.nAusschussAuftrag + 1;
+stStueckzaehler.nAusschussTag 		:= stStueckzaehler.nAusschussTag + 1;
+stStueckzaehler.nAusschussGesamt 	:= stStueckzaehler.nAusschussGesamt + 1;
+
+stStueckzaehler.nAuftragszaehler	:= stStueckzaehler.nAuftragszaehler + 1;
+stStueckzaehler.nGesamt				:= stStueckzaehler.nGesamt + 1;
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="zaehlerGut" Id="{2c391cf9-cc83-40e3-a105-1fbac4862ee3}">
+      <Declaration><![CDATA[METHOD zaehlerGut : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stStueckzaehler.nGutteileAuftrag 	:= stStueckzaehler.nGutteileAuftrag + 1;
+stStueckzaehler.nGutteileTag 		:= stStueckzaehler.nGutteileTag + 1;
+stStueckzaehler.nGutteileGesamt 	:= stStueckzaehler.nGutteileGesamt + 1;
+
+stStueckzaehler.nAuftragszaehler	:= stStueckzaehler.nAuftragszaehler + 1;
+stStueckzaehler.nGesamt				:= stStueckzaehler.nGesamt + 1;
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="MAIN">
+      <LineId Id="4964" Count="249" />
+      <LineId Id="5316" Count="1" />
+      <LineId Id="5214" Count="0" />
+      <LineId Id="5315" Count="0" />
+      <LineId Id="5215" Count="35" />
+      <LineId Id="5318" Count="0" />
+      <LineId Id="5325" Count="0" />
+      <LineId Id="5320" Count="0" />
+      <LineId Id="5323" Count="0" />
+      <LineId Id="5326" Count="0" />
+      <LineId Id="5321" Count="1" />
+      <LineId Id="5251" Count="61" />
+      <LineId Id="639" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.auftragAnfordern">
+      <LineId Id="340" Count="1" />
+      <LineId Id="343" Count="3" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="329" Count="0" />
+      <LineId Id="237" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="295" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.init">
+      <LineId Id="261" Count="6" />
+      <LineId Id="269" Count="4" />
+      <LineId Id="277" Count="1" />
+      <LineId Id="280" Count="1" />
+      <LineId Id="283" Count="0" />
+      <LineId Id="285" Count="0" />
+      <LineId Id="287" Count="4" />
+      <LineId Id="302" Count="0" />
+      <LineId Id="378" Count="1" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="305" Count="4" />
+      <LineId Id="351" Count="5" />
+      <LineId Id="3" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.Lampen">
+      <LineId Id="13" Count="0" />
+      <LineId Id="3" Count="8" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="17" Count="2" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="39" Count="1" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="36" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.reset">
+      <LineId Id="5" Count="2" />
+    </LineIds>
+    <LineIds Name="MAIN.safetyReset">
+      <LineId Id="2" Count="0" />
+      <LineId Id="4" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="5" Count="1" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="7" Count="3" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="11" Count="1" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="13" Count="2" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="16" Count="1" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="18" Count="2" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.zaehlerAusschuss">
+      <LineId Id="6" Count="6" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.zaehlerGut">
+      <LineId Id="6" Count="5" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

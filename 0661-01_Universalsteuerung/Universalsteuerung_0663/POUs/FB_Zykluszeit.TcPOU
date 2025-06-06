@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Zykluszeit" Id="{725ba52a-6096-47c4-a78f-eda5b99a412c}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Zykluszeit
+VAR_INPUT
+	bStart:					BOOL;
+	fZyklusZeitTask:		REAL;
+END_VAR
+
+VAR_OUTPUT
+	fZyklusZeit:			REAL;
+END_VAR
+
+VAR
+	fZykluszaehler:			REAL;
+	fZykluszeitTemp:		REAL;
+	fbStartFlanke:			R_TRIG;
+	fbStopFlanke:			R_TRIG;
+	bZyklusMessungAkt:		BOOL;
+END_VAR
+
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbStartFlanke(CLK := bStart);
+fbStopFlanke(CLK := NOT bStart);
+fZykluszeitTemp := fZykluszaehler * (fZyklusZeitTask/1000);
+
+IF fbStartFlanke.Q THEN
+	fZykluszaehler := 0;
+	fZyklusZeit := fZykluszeitTemp;
+	bZyklusMessungAkt := FALSE;
+END_IF
+
+IF			fbStartFlanke.Q 
+	AND NOT	bZyklusMessungAkt THEN
+	bZyklusMessungAkt := TRUE;
+END_IF
+
+IF 		bZyklusMessungAkt THEN
+	fZykluszaehler := fZykluszaehler + 1;
+END_IF
+
+IF			fbStopFlanke.Q 
+	AND 	bZyklusMessungAkt THEN
+	bZyklusMessungAkt := FALSE;
+END_IF
+
+(*
+fbStartFlanke(CLK := bStart);
+fbStopFlanke(CLK := bStop);
+fZykluszeitTemp := fZykluszaehler * (fZyklusZeitTask/1000);
+
+IF fbStartFlanke.Q THEN
+	fZykluszaehler := 0;
+	fZyklusZeit := fZykluszeitTemp;
+	bZyklusMessungAkt := FALSE;
+END_IF
+
+IF			fbStartFlanke.Q 
+	AND NOT	bZyklusMessungAkt THEN
+	bZyklusMessungAkt := TRUE;
+END_IF
+
+IF 		bZyklusMessungAkt
+	AND	MAIN.bProduzieren THEN
+	fZykluszaehler := fZykluszaehler + 1;
+END_IF
+
+IF			fbStopFlanke.Q 
+	AND 	bZyklusMessungAkt THEN
+	bZyklusMessungAkt := FALSE;
+END_IF
+*)]]></ST>
+    </Implementation>
+    <LineIds Name="FB_Zykluszeit">
+      <LineId Id="188" Count="1" />
+      <LineId Id="35" Count="10" />
+      <LineId Id="132" Count="0" />
+      <LineId Id="47" Count="2" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="138" Count="2" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="162" Count="0" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="165" Count="22" />
+      <LineId Id="164" Count="0" />
+      <LineId Id="163" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_SchrittQueue" Id="{96478c50-d26f-4bb9-8f75-4a8abd2ae25d}">
+    <Declaration><![CDATA[TYPE ST_SchrittQueue :
+STRUCT
+	fbAktor:				REFERENCE TO FB_Aktor;
+	fbOutput:				REFERENCE TO FB_Output;
+	bInPos:					BOOL;						//Ob Sollposition erreicht wurde
+	bGesetzt:				BOOL;						//Information ob ausgang gesetzt oder zurueckgesetzt wurde (arbeitsPos -> gesetzt)
+	bStatuswechsel:			BOOL;						//True wenn nach diesem Eintrag der Status des Ablaufs gewechselt hat
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

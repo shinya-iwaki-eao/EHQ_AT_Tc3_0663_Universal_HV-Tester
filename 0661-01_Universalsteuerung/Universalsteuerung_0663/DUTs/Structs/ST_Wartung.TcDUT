@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_Wartung" Id="{e02ce545-0ce9-4c2f-b9c3-87099e106d04}">
+    <Declaration><![CDATA[TYPE ST_Wartung :
+STRUCT
+	sBezeichnung:		STRING;
+	sPerson:			STRING;			//Wer die Wartung durchführen darf
+
+	nZyklenBisWartung:	LINT;			//nach wie vielen Zyklen die wartung durchgeführt werden muss
+	fZeitBisWartung:	REAL;			//nach welcher Zeit die wartung durchgeführt werden muss
+	
+	nZyklenSeitWartung:	LINT;
+	fZeitSeitWartung:	LREAL;
+	bAnstehend:			BOOL;
+	
+	sVerbleibendeZeit:	STRING;
+	sVerbleibendeZyklen:STRING;
+	
+	sZyklenBisWartung:	STRING;
+	sZeitBisWartung:	STRING;
+
+	bBtnReset:			BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

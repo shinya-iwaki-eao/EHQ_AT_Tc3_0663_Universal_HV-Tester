@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Turmleuchte" Id="{cece7395-b725-4bb8-b12d-4ef337d617f5}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Turmleuchte
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	bA_Summer					AT%Q*:BOOL;
+	bA_LampeGruen				AT%Q*:BOOL;
+	bA_LampeOrange				AT%Q*:BOOL;
+	bA_LampeRot					AT%Q*:BOOL;
+	bA_Zaehlen					AT%Q*:BOOL;
+	
+	tZaehlImpuls:				TP;
+	
+	bStoerung:					BOOL;
+	bWarnung:					BOOL;
+	bBetrieb:					BOOL;
+	bZaehlen:					BOOL;
+	
+	bBtnSireneAktivieren:		BOOL;
+END_VAR
+
+VAR PERSISTENT
+	bSireneAktiviert:			BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bA_LampeGruen := bBetrieb;
+bA_LampeOrange :=bWarnung;
+bA_LampeRot := bStoerung;
+bA_Summer := bStoerung AND NOT MAIN.bProgStop AND MAIN.bProduzieren AND bSireneAktiviert;
+
+IF			bZaehlen THEN
+	tZaehlImpuls.IN := TRUE;
+	bZaehlen := FALSE;
+ELSE
+	tZaehlImpuls.IN := FALSE;
+END_IF
+
+
+tZaehlImpuls(Q => bA_Zaehlen, PT := T#300MS);
+
+IF			bBtnSireneAktivieren THEN
+	bBtnSireneAktivieren := FALSE;
+	bSireneAktiviert := NOT bSireneAktiviert;
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="betrieb" Id="{da15ecb8-6a6f-4a58-bf8c-8bf03339426e}">
+      <Declaration><![CDATA[METHOD betrieb
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bBetrieb := true;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="reset" Id="{cbcd39fa-2a22-4a83-b04c-b00c1546002c}">
+      <Declaration><![CDATA[METHOD reset : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bStoerung := FALSE;
+bWarnung := FALSE;
+bBetrieb := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="stoerung" Id="{027dff04-cd20-420d-be2e-1235c87d31e5}">
+      <Declaration><![CDATA[METHOD stoerung
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bStoerung := true;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="warnung" Id="{cad17de3-6cb2-41a6-a7d7-9cedd702839a}">
+      <Declaration><![CDATA[METHOD warnung
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bWarnung := true;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="zaehlen" Id="{bb5f0c60-6042-42ae-b185-bf4965766e4b}">
+      <Declaration><![CDATA[METHOD zaehlen
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bZaehlen := true;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Turmleuchte">
+      <LineId Id="3" Count="2" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="6" Count="8" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="63" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Turmleuchte.betrieb">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Turmleuchte.reset">
+      <LineId Id="3" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Turmleuchte.stoerung">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Turmleuchte.warnung">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Turmleuchte.zaehlen">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

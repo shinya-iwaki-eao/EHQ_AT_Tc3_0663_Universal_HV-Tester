@@ -1,0 +1,459 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Aktor" Id="{8de33ca1-d0e8-48d0-ac35-4021fc43aead}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Aktor
+VAR_INPUT	
+	bHandOverride:				BOOL;			//Wenn true kann der Ausgang auch im Handbetrieb geschrieben werden	
+	fbSchrittbetrieb:			REFERENCE TO FB_Schrittbetrieb;
+	
+	//Inputs
+	bE_sensRP					AT%I*:BOOL;		//VAR_INPUT damit zwischenpositionen abgefragt werden können
+	bE_sensAP					AT%I*:BOOL;
+	
+	b53WegeVentil:				BOOL;
+	
+	bSensAPVorhanden:			BOOL;
+	bSensRPVorhanden:			BOOL;
+	tZeitAP:					TIME;
+	tZeitRP:					TIME;
+END_VAR
+VAR_OUTPUT
+	bStoerung:					BOOL;
+	bFalschePos:				BOOL;
+END_VAR
+VAR	
+	//Outputs
+	bArbeitsPos:				BOOL;
+	bA_arbeitsPos				AT%Q*:BOOL;	
+	
+	bBtnHandausloesung:			BOOL;
+	
+	fbZeitRP:					TON;
+	fbZeitAP:					TON;
+	
+	eStatus:					AktorStatus;
+	
+	bStartUberpruefung:			BOOL;
+	
+	eAnfrage:					AktorStatus;
+	
+	fbFtrigHandbetr:			F_TRIG;
+	
+	
+	//Parameter
+	//bSensAPVorhanden:			BOOL;
+	//bSensRPVorhanden:			BOOL;
+	
+	//tZeitRP:					TIME := T#2S;
+	//tZeitAP:					TIME := T#2S;
+	
+	bStoerungRP: 				BOOL;
+	bStoerungAP: 				BOOL;
+
+	
+	nErrorIdAP:					INT;
+	nErrorIdRP:					INT;
+	
+	sBezeichnung:				STRING;			//Bezeichnung für Handbetriebfehlermeldung
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bA_arbeitsPos := bArbeitsPos AND (NOT MAIN.bE_SafetyProgStop AND MAIN.bE_LuftdruckIO OR NOT b53WegeVentil);
+
+fbZeitAP(PT:=tZeitAP, IN := 			bA_arbeitsPos
+								AND (NOT bSensAPVorhanden
+								OR	NOT bE_sensAP
+								OR		bSensRPVorhanden
+								AND 	bE_sensRP));
+
+fbZeitRP(PT:=tZeitRP, IN := 		NOT bA_arbeitsPos
+								AND (NOT bSensRPVorhanden
+								OR NOT	bE_sensRP
+								OR		bSensAPVorhanden
+								AND		bE_sensAP));
+
+//Fehlermeldungen
+IF			bSensAPVorhanden
+	AND		fbZeitAP.Q 
+	AND		bStartUberpruefung
+	AND NOT bStoerungAP
+	AND NOT (nErrorIdAP = 0) THEN
+
+	EventLogger.aAlarm[nErrorIdAP].Raise(0);
+	bStoerungAP := TRUE;
+
+ELSIF		NOT	fbZeitAP.Q 
+		AND		bStoerungAP THEN
+	EventLogger.aAlarm[nErrorIdAP].Clear(0, TRUE);
+	bStoerungAP := FALSE;
+END_IF
+
+IF			bSensRPVorhanden
+	AND		fbZeitRP.Q 
+	AND		bStartUberpruefung
+	AND NOT bStoerungRP
+	AND NOT (nErrorIdRP = 0) THEN
+	
+	EventLogger.aAlarm[nErrorIdRP].Raise(0);
+	bStoerungRP := TRUE;
+	
+ELSIF		NOT fbZeitRP.Q
+		AND		bStoerungRP THEN
+		
+	EventLogger.aAlarm[nErrorIdRP].Clear(0, TRUE);
+	bStoerungRP := FALSE;
+END_IF
+
+bStoerung := bStoerungAP OR bStoerungRP;
+
+//Status
+//http://www.32x8.com/sop6_____A-B-C-D-E-F_____m_33-35-37-39-41-45-52-53-54-55-60-61___________option-0_____989781876978894288722
+IF			bA_arbeitsPos
+			AND	(NOT bSensAPVorhanden
+			AND	NOT bSensRPVorhanden
+			AND		fbZeitAP.Q
+			
+			OR	NOT bSensAPVorhanden
+			AND	NOT bE_sensRP
+			AND		fbZeitAP.Q
+			
+			OR		bSensAPVorhanden
+			AND NOT bSensRPVorhanden
+			AND		bE_sensAP
+			
+			OR		bSensAPVorhanden
+			AND		bE_sensAP
+			AND NOT bE_sensRP) THEN
+			
+	eStatus := AktorStatus.inAP;
+	
+	IF			(eAnfrage = AktorStatus.zuAP) THEN
+		bFalschePos := FALSE;
+		eAnfrage := AktorStatus.default;
+	END_IF
+
+//http://www.32x8.com/sop6_____A-B-C-D-E-F_____m_1-3-5-7-10-11-14-15-17-19-26-27___________option-0_____989781966178824394701
+ELSIF		NOT bA_arbeitsPos
+		AND (NOT bSensAPVorhanden
+		AND NOT bSensRPVorhanden
+		AND		fbZeitRP.Q
+		
+		OR	NOT bSensRPVorhanden
+		AND NOT bE_sensAP
+		AND		fbZeitRP.Q
+		
+		OR	NOT bSensAPVorhanden
+		AND		bSensRPVorhanden
+		AND		bE_sensRP
+		
+		OR		bSensRPVorhanden
+		AND NOT bE_sensAP
+		AND		bE_sensRP) THEN
+		
+	eStatus := AktorStatus.inRP;
+	
+	IF			(eAnfrage = AktorStatus.zuRP) THEN
+		bFalschePos := FALSE;
+		eAnfrage := AktorStatus.default;
+	END_IF
+ELSE
+	eStatus := AktorStatus.default;
+END_IF
+
+//Nothalt
+IF		NOT	MAIN.bE_NotHalt THEN
+	bArbeitsPos := FALSE;
+	bFalschePos := FALSE;
+END_IF
+
+//Handbetrieb
+IF			MAIN.bE_Handbetrieb THEN
+	IF			bBtnHandausloesung THEN
+		bBtnHandausloesung := FALSE;
+		handAusloesung();
+	END_IF
+ELSE
+	bBtnHandausloesung := FALSE;
+END_IF
+
+//Positionsüberwachung Handbetrieb
+fbFtrigHandbetr(CLK := Main.bE_Handbetrieb);
+
+IF 			(fbFtrigHandbetr.Q
+	OR		fbSchrittbetrieb.bSendFalschePosError)
+	AND		bFalschePos THEN
+	
+	IF			bA_arbeitsPos THEN
+		EventLogger.aErrorLog[250].ipArguments.Clear().AddString(sBezeichnung).AddString('Ruheposition');
+	ELSE
+		EventLogger.aErrorLog[250].ipArguments.Clear().AddString(sBezeichnung).AddString('Arbeitsposition');
+	END_IF
+	
+	EventLogger.aErrorLog[250].Send(0);
+END_IF
+
+IF 			bFalschePos THEN
+	fbSchrittbetrieb.bAktorPosNIO := TRUE;
+	Main.bPosNachHbNio := TRUE;
+END_IF
+]]></ST>
+    </Implementation>
+    <Method Name="arbeitsPos" Id="{1d6c2963-c6f6-49a9-a38e-089c52bf5a45}">
+      <Declaration><![CDATA[METHOD arbeitsPos : BOOL
+VAR_INPUT
+END_VAR
+VAR_INST
+	bPrevOutputState: 		BOOL;
+END_VAR
+VAR
+	stSchrittEintrag:		ST_SchrittQueue;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stSchrittEintrag.fbAktor REF= THIS^;	
+stSchrittEintrag.bGesetzt := TRUE;
+
+//*************************************************************************************
+IF		NOT Main.bE_Handbetrieb 
+	AND NOT Main.bProgStop
+	OR		bHandOverride
+
+	OR		MAIN.bE_Handbetrieb							//Schritt vorwaerts im Handbetrieb
+	AND		fbSchrittbetrieb.bAblaufFreigabe THEN
+	
+	//*************************************************************************************
+	IF		NOT bArbeitsPos THEN	//Beim Wechsel des Ausgangs Bewegung in queue aufnehmen
+		fbSchrittbetrieb.addToQueue(stSchrittEintrag);
+	END_IF
+	//*************************************************************************************
+	
+	bArbeitsPos := TRUE;
+	
+ELSIF		MAIN.bE_Handbetrieb		//Wenn im Handbetrieb der Aktor, welcher der Ablauf setzten will, verfahren wird, muss die bewegung in die queue aufgenommen werden
+	AND	NOT bPrevOutputState
+	AND		bArbeitsPos THEN
+	fbSchrittbetrieb.addToQueue(stSchrittEintrag);
+END_IF
+
+eAnfrage := AktorStatus.zuAP;
+bStartUberpruefung := TRUE;			//Damit erst nach dem ersten Befehl die Fehlermeldungen geschrieben werden (sonst sind alle unten vor den Init Ereignissen geloggt)
+bPrevOutputState := bArbeitsPos;
+
+arbeitsPos := 			(eStatus = AktorStatus.inAP)
+				OR  	((tZeitAP = T#0S)
+				AND NOT bSensAPVorhanden
+				AND NOT bSensRPVorhanden
+				AND		bArbeitsPos);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{06cb0a42-fcd7-44de-b57a-9378761fb48e}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains:			 	BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode: 				BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	
+	bSensAPVorhanden:			BOOL;
+	bSensRPVorhanden:			BOOL;
+	
+	tZeitRP:					TIME := T#2S;
+	tZeitAP:					TIME := T#2S;
+	
+	nErrorIdAP:					INT;
+	nErrorIdRP:					INT;
+	
+	sBezeichnung:				String;			//Bezeichnung für Handbetriebfehlermeldung
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.bSensAPVorhanden	:= bSensAPVorhanden;
+THIS^.bSensRPVorhanden	:= bSensRPVorhanden;
+THIS^.tZeitRP			:= tZeitRP;
+THIS^.tZeitAP			:= tZeitAP;
+THIS^.nErrorIdAP		:= nErrorIdAP;
+THIS^.nErrorIdRP		:= nErrorIdRP;
+THIS^.sBezeichnung		:= sBezeichnung;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="handAusloesung" Id="{e4d1825e-4d7a-443a-840f-511d80a23c9e}">
+      <Declaration><![CDATA[METHOD handAusloesung
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bArbeitsPos := NOT bArbeitsPos;
+
+bFalschePos := NOT bFalschePos;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="inAP" Id="{3b584168-bddb-45ed-a8d4-74f8577358f6}">
+      <Declaration><![CDATA[METHOD inAP : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[inAP := (eStatus = AktorStatus.inAP);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="inRP" Id="{6a770c85-f28f-428b-b477-d0e9a09b2b33}">
+      <Declaration><![CDATA[METHOD inRP : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[inRP := (eStatus = AktorStatus.inRP);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ruhePos" Id="{b835ce93-7818-409e-aea5-0e26462eee02}">
+      <Declaration><![CDATA[METHOD ruhePos : BOOL
+VAR_INPUT
+END_VAR
+VAR_INST
+	bPrevOutputState: 		BOOL;
+END_VAR
+VAR
+	stSchrittEintrag:		ST_SchrittQueue;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stSchrittEintrag.fbAktor REF= THIS^;
+
+//*************************************************************************************
+IF		NOT Main.bE_Handbetrieb 
+	AND NOT Main.bProgStop
+	OR		bHandOverride
+
+	OR		MAIN.bE_Handbetrieb							//Schritt vorwaerts im Handbetrieb
+	AND		fbSchrittbetrieb.bAblaufFreigabe THEN
+	
+	//*************************************************************************************
+	IF			bArbeitsPos THEN	//Beim Wechsel des Ausgangs Bewegung in queue aufnehmen
+		fbSchrittbetrieb.addToQueue(stSchrittEintrag);
+	END_IF
+	//*************************************************************************************
+	
+	bArbeitsPos := FALSE;
+	
+ELSIF		MAIN.bE_Handbetrieb		//Wenn im Handbetrieb der Aktor, welcher der Ablauf setzten will, verfahren wird, muss die bewegung in die queue aufgenommen werden
+	AND	 	bPrevOutputState
+	AND	NOT	bArbeitsPos THEN
+	fbSchrittbetrieb.addToQueue(stSchrittEintrag);
+END_IF
+
+eAnfrage := AktorStatus.zuRP;
+bStartUberpruefung := TRUE;			//Damit erst nach dem ersten Befehl die Fehlermeldungen geschrieben werden (sonst sind alle unten vor den Init Ereignissen geloggt)
+bPrevOutputState := bArbeitsPos;
+
+ruhePos  := 		(eStatus = AktorStatus.inRP)
+			OR  	((tZeitRP = T#0S)
+			AND NOT bSensAPVorhanden
+			AND NOT bSensRPVorhanden
+			AND	NOT bArbeitsPos);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="stopUeberpruefung" Id="{da385d0a-7b0b-4300-bb26-ea383f54719b}">
+      <Declaration><![CDATA[METHOD stopUeberpruefung
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bStartUberpruefung := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Aktor">
+      <LineId Id="539" Count="1" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="4" Count="9" />
+      <LineId Id="490" Count="0" />
+      <LineId Id="15" Count="22" />
+      <LineId Id="430" Count="0" />
+      <LineId Id="39" Count="6" />
+      <LineId Id="211" Count="0" />
+      <LineId Id="46" Count="54" />
+      <LineId Id="162" Count="0" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="163" Count="1" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="308" Count="0" />
+      <LineId Id="307" Count="0" />
+      <LineId Id="313" Count="0" />
+      <LineId Id="309" Count="1" />
+      <LineId Id="312" Count="0" />
+      <LineId Id="311" Count="0" />
+      <LineId Id="314" Count="2" />
+      <LineId Id="101" Count="4" />
+      <LineId Id="367" Count="0" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="368" Count="0" />
+      <LineId Id="108" Count="9" />
+      <LineId Id="369" Count="0" />
+      <LineId Id="119" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Aktor.arbeitsPos">
+      <LineId Id="45" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="3" Count="2" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="29" Count="3" />
+      <LineId Id="7" Count="3" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="20" Count="1" />
+      <LineId Id="16" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Aktor.FB_init">
+      <LineId Id="3" Count="5" />
+      <LineId Id="25" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Aktor.handAusloesung">
+      <LineId Id="3" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Aktor.inAP">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Aktor.inRP">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Aktor.ruhePos">
+      <LineId Id="33" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="3" Count="1" />
+      <LineId Id="57" Count="2" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="39" Count="3" />
+      <LineId Id="37" Count="1" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="44" Count="2" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="7" Count="3" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="20" Count="1" />
+      <LineId Id="15" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Aktor.stopUeberpruefung">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

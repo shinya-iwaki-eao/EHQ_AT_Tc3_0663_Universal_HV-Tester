@@ -1,0 +1,1116 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Station01" Id="{7b42e531-f381-47bd-ac94-8ae1c13c3c43}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Station01 EXTENDS FB_Station IMPLEMENTS IF_Station
+VAR_INPUT
+	//Ablauf
+	//aReihenfolge:	ARRAY [1..Parameter.cAnzSchritte] OF AblaufStatus;  // über HMI befüllen
+	aReihenfolge:	ARRAY [1..Parameter.cAnzSchritte] OF ST_Reihenfolge;
+	fbAktor:		ARRAY [1..Parameter.cAnzAktoren] OF FB_Aktor[
+											(bSensAPVorhanden:= FALSE, 
+											bSensRPVorhanden:= FALSE, 
+											tZeitRP:= T#3000MS, 
+											tZeitAP:= T#3000MS, 
+											nErrorIdAP:= 13, 
+											nErrorIdRP:= 14, 
+											sBezeichnung:= 'Aktor 1'),
+											
+											(bSensAPVorhanden:= FALSE, 
+											bSensRPVorhanden:= FALSE, 
+											tZeitRP:= T#3000MS, 
+											tZeitAP:= T#3000MS, 
+											nErrorIdAP:= 15, 
+											nErrorIdRP:= 16, 
+											sBezeichnung:= 'Aktor 2'),
+											
+											(bSensAPVorhanden:= FALSE, 
+											bSensRPVorhanden:= FALSE, 
+											tZeitRP:= T#3000MS, 
+											tZeitAP:= T#3000MS, 
+											nErrorIdAP:= 17, 
+											nErrorIdRP:= 18, 
+											sBezeichnung:= 'Aktor 3'),
+											
+											(bSensAPVorhanden:= FALSE, 
+											bSensRPVorhanden:= FALSE, 
+											tZeitRP:= T#3000MS, 
+											tZeitAP:= T#3000MS, 
+											nErrorIdAP:= 19, 
+											nErrorIdRP:= 20, 
+											sBezeichnung:= 'Aktor 4'),
+											
+											(bSensAPVorhanden:= FALSE, 
+											bSensRPVorhanden:= FALSE, 
+											tZeitRP:= T#3000MS, 
+											tZeitAP:= T#3000MS, 
+											nErrorIdAP:= 21, 
+											nErrorIdRP:= 22, 
+											sBezeichnung:= 'Aktor 5'),
+											
+											(bSensAPVorhanden:= FALSE, 
+											bSensRPVorhanden:= FALSE, 
+											tZeitRP:= T#3000MS, 
+											tZeitAP:= T#3000MS, 
+											nErrorIdAP:= 23, 
+											nErrorIdRP:= 24, 
+											sBezeichnung:= 'Aktor 6')
+											];
+	bSchrittbetriebAktiv:	BOOL;
+	sNaechsterSchritt:		STRING;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+
+
+	
+	//Inputs	
+	bE_extGeraetBereit			AT%I*:	BOOL;
+
+	bE_Sensor					AT %I* : ARRAY[1..8] OF BOOL;
+	bA_extGeraetStart			AT%Q*:	BOOL;
+	//Outputs
+
+	//FBs	
+
+	
+	// Not-Halt testen täglich
+	bNotHaltTestIO:			BOOL;
+	fbNotHaltGedrueckt:		R_TRIG;
+	bBtnResetWarnNothalt:	BOOL;
+	bWarnungNothalt:		BOOL;
+	bBtnResetAuftrZaehler:	BOOL;
+	fbFlankeSchritt:		R_TRIG;
+	bInit:					BOOL := TRUE;
+	iSchritt:				INT := 1;								
+	i: 						INT;
+	x: 						INT;
+	bSensorTeilAnwesend: 	BOOL;
+	nStatusSchritt: 		INT;
+	nZyklusZaehler:			INT;	
+	
+END_VAR
+
+VAR_OUTPUT
+	sStationsStatus:	STRING;
+END_VAR
+
+VAR PERSISTENT
+	nMonatVorher:			WORD;
+	nTagVorher:				WORD;
+	nZaehlerNotHalt:		DINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbFlankeSchritt(CLK := MAIN.bE_Taste_Schritt AND bSchrittbetriebAktiv);
+
+//Array "aReihenfolge" mit dem Ablauf befüllen
+IF			MAIN.HMI.bProgrammAngewaehlt 
+		AND	reihenfolgeSchreiben() THEN
+	MAIN.HMI.bProgrammAngewaehlt := FALSE;
+END_IF
+
+//********************************************************************************	
+//Aktoren
+fbAktor[1](fbSchrittbetrieb := fbSchrittbetrieb);
+fbAktor[2](fbSchrittbetrieb := fbSchrittbetrieb);
+fbAktor[3](fbSchrittbetrieb := fbSchrittbetrieb);
+fbAktor[4](fbSchrittbetrieb := fbSchrittbetrieb);
+fbAktor[5](fbSchrittbetrieb := fbSchrittbetrieb);
+fbAktor[6](fbSchrittbetrieb := fbSchrittbetrieb); 
+
+
+
+FOR x := 1 TO Parameter.cAnzAktoren DO
+	IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[x].nSensRuhePos > 0 THEN			
+		fbAktor[x].bE_sensRP 	:= bE_Sensor[MAIN.HMI.ProgrammTemp.aAktorKonfig[x].nSensRuhePos];
+		fbAktor[x].bSensRPVorhanden := TRUE;
+	ELSE
+		fbAktor[x].bSensRPVorhanden := FALSE;
+	END_IF
+	IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[x].nSensArbeitsPos > 0 THEN			
+		fbAktor[x].bE_sensAP 	:= bE_Sensor[MAIN.HMI.ProgrammTemp.aAktorKonfig[x].nSensArbeitsPos];
+		fbAktor[x].bSensAPVorhanden := TRUE;
+	ELSE
+		fbAktor[x].bSensAPVorhanden := FALSE;
+	END_IF	
+	IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[x].tFahrZeit = T#0MS THEN
+		fbAktor[x].tZeitRP 		:= T#2000MS;
+		fbAktor[x].tZeitAP 		:= T#2000MS;
+	ELSE
+		fbAktor[x].tZeitRP 		:= MAIN.HMI.ProgrammTemp.aAktorKonfig[x].tFahrZeit;
+		fbAktor[x].tZeitAP 		:= MAIN.HMI.ProgrammTemp.aAktorKonfig[x].tFahrZeit;
+	END_IF
+	
+	
+END_FOR
+	IF			bE_Sensor[MAIN.HMI.ProgrammTemp.nTeilAnw] THEN
+		bSensorTeilAnwesend := TRUE;
+	ELSE
+		bSensorTeilAnwesend := FALSE;
+	END_IF
+
+FOR x := 1 TO Parameter.cAnzAktoren DO
+	IF			NOT	stStationInfo.bInitBeendet THEN
+		fbAktor[x].bSensRPVorhanden := FALSE;
+		fbAktor[x].bSensAPVorhanden := FALSE;
+	END_IF
+END_FOR
+		
+//********************************************************************************	
+//Sonstige FBs
+
+
+//********************************************************************************
+//Basisklasse ausführen
+SUPER^(	stStationInfo := stStationInfo);
+
+
+//********************************************************************************
+//Stoerungen
+stStationInfo.bStoerung := 			(fbAktor[1].bStoerung
+							OR		fbAktor[2].bStoerung
+							OR		fbAktor[3].bStoerung
+							OR		fbAktor[4].bStoerung
+							OR		fbAktor[5].bStoerung
+							OR		fbAktor[6].bStoerung)
+							AND		Main.bProduzieren
+							AND NOT Main.bE_Handbetrieb;
+							
+sStationsStatus := stStationInfo.sStatus;
+
+//********************************************************************************
+//Warnung
+stStationInfo.bWarnung := (			FALSE);
+
+//Not-Halt-Test nach einem Tag zurücksetzen
+IF		 	(nTagVorher <> MAIN.fbSystemZeit.TIMESTR.wDay 
+	OR 	  	nMonatVorher <> MAIN.fbSystemZeit.TIMESTR.wMonth)
+	AND		MAIN.fbSystemZeit.TIMESTR.wMonth > 0 THEN		//Damit der fbSystemzeit sicher ausgeführt wurde
+	nTagVorher := MAIN.fbSystemZeit.TIMESTR.wDay;
+	nMonatVorher := MAIN.fbSystemZeit.TIMESTR.wMonth;
+	bNotHaltTestIO := FALSE;
+
+END_IF
+
+	// Not-Halt wurde betätigt
+	IF		NOT	bNotHaltTestIO 
+		AND	NOT	MAIN.bE_NotHalt THEN
+		bNotHaltTestIO := TRUE;
+	END_IF
+	
+	//Fehlermeldung
+	IF		NOT bNotHaltTestIO
+		AND	NOT	EventLogger.aAlarm[40].bRaised THEN
+		EventLogger.aAlarm[40].Raise(0);
+	ELSIF		bNotHaltTestIO
+		AND		EventLogger.aAlarm[40].bRaised THEN
+		EventLogger.aAlarm[40].Clear(0, TRUE);
+	END_IF
+	// Not-Halt Wartung
+	fbNotHaltGedrueckt(CLK := NOT(MAIN.bE_NotHalt) AND MAIN.bInitBeendet);
+	IF		fbNotHaltGedrueckt.Q THEN
+		nZaehlerNotHalt := nZaehlerNotHalt + 1;
+	END_IF
+	IF		nZaehlerNotHalt >= Parameter.cMaxZyklNotHalt 
+			AND	NOT	bWarnungNothalt THEN
+		bWarnungNothalt := TRUE;
+	END_IF
+	
+	IF		bBtnResetWarnNothalt 
+		AND bWarnungNothalt THEN
+			bBtnResetWarnNothalt := FALSE;
+			bWarnungNothalt := FALSE;
+			nZaehlerNotHalt := 0;
+	END_IF
+
+// Auftragszähler Reset
+IF			bBtnResetAuftrZaehler THEN
+	bBtnResetAuftrZaehler := FALSE;
+	MAIN.stStueckzaehler.nAusschussAuftrag 	:= 0;
+	MAIN.stStueckzaehler.nGutteileAuftrag 	:= 0;
+END_IF
+
+// Nächster Schritt auf HMI anzeigen im Schrittbetrieb
+
+CASE aReihenfolge[iSchritt].eAblauf OF
+	AblaufStatus.default:			sNaechsterSchritt := 'default';
+	AblaufStatus.aktor01Vor:		sNaechsterSchritt := 'Aktor 1 vor';
+	AblaufStatus.aktor01Zurueck:	sNaechsterSchritt := 'Aktor 1 zurück';
+	AblaufStatus.aktor02Vor:		sNaechsterSchritt := 'Aktor 2 vor';
+	AblaufStatus.aktor02Zurueck:	sNaechsterSchritt := 'Aktor 2 zurück';
+	AblaufStatus.aktor03Vor:		sNaechsterSchritt := 'Aktor 3 vor';
+	AblaufStatus.aktor03Zurueck:	sNaechsterSchritt := 'Aktor 3 zurück';
+	AblaufStatus.aktor04Vor:		sNaechsterSchritt := 'Aktor 4 vor';
+	AblaufStatus.aktor04Zurueck:	sNaechsterSchritt := 'Aktor 4 zurück';
+	AblaufStatus.aktor05Vor:		sNaechsterSchritt := 'Aktor 5 vor';
+	AblaufStatus.aktor05Zurueck:	sNaechsterSchritt := 'Aktor 5 zurück';
+	AblaufStatus.aktor06Vor:		sNaechsterSchritt := 'Aktor 6 vor';
+	AblaufStatus.aktor06Zurueck:	sNaechsterSchritt := 'Aktor 6 zurück';
+	AblaufStatus.teilAnwesend:		sNaechsterSchritt := 'teilAnwesend';
+	AblaufStatus.bereit:			sNaechsterSchritt := 'bereit';
+	AblaufStatus.error:				sNaechsterSchritt := 'error';
+	AblaufStatus.extGeraetBereit:	sNaechsterSchritt := 'extGeraetBereit';
+	AblaufStatus.extGeraetFertig:	sNaechsterSchritt := 'extGeraetFertig';
+	AblaufStatus.extGeraetStart:	sNaechsterSchritt := 'extGeraetStart';
+	AblaufStatus.fertig:			sNaechsterSchritt := 'fertig';
+	AblaufStatus.warten:			sNaechsterSchritt := 'warten';
+END_CASE
+
+
+
+//************************************************************************
+//Muss alles nach dem Ablauf sein, damit das Main die Aktuellen Werte hat.
+//************************************************************************
+
+//Zyklus Fertig	
+stStationInfo.bZyklusFertig :=		NOT bTeilBearbeiten;
+bInit := FALSE;
+]]></ST>
+    </Implementation>
+    <Method Name="ablaufSchreiben" Id="{a2c5d6ea-3643-454c-9da6-50669ac3209b}">
+      <Declaration><![CDATA[METHOD ablaufSchreiben : AblaufStatus
+VAR_INPUT
+END_VAR
+
+VAR
+	eAblaufStatus: AblaufStatus;
+	i:		INT := 1;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+// Ablauf aus ARRAY Reihenfolge in AblaufStatus schreiben
+// Wenn beim Aktor Pendelbetrieb aktiviert ist, muss der Ablaufstatus jedes Mal wechseln zwischen den Zyklen, z.B. aktor01Vor <> aktor02Zurueck
+// Dies wird z.B bei einer Verdrillvorrichtung für den RST benötigt
+// MAIN.HMI.ProgrammTemp.aAktorKonfig[1]
+
+
+IF			nZyklusZaehler = 0 THEN
+	// Ablauf für Aktoren korrigieren gemäss ihrem aktuellen Zustand
+		IF			fbAktor[1].inAP()
+			AND		aReihenfolge[iSchritt].eAblauf = AblaufStatus.aktor01Vor THEN
+				eAblaufStatus := AblaufStatus.aktor01Zurueck;
+//		ELSIF 		fbAktor[1].inRP()
+//			AND		aReihenfolge[iSchritt].eAblauf = AblaufStatus.aktor01Zurueck THEN
+//				eAblaufStatus := AblaufStatus.aktor01Vor;
+				
+		ELSIF 		fbAktor[2].inAP()
+			AND		aReihenfolge[iSchritt].eAblauf = AblaufStatus.aktor02Vor THEN
+				eAblaufStatus := AblaufStatus.aktor02Zurueck;
+//		ELSIF 		fbAktor[2].inRP()
+//			AND		aReihenfolge[iSchritt].eAblauf = AblaufStatus.aktor02Zurueck THEN
+//				eAblaufStatus := AblaufStatus.aktor02Vor;
+		
+		ELSIF 		fbAktor[3].inAP()
+			AND		aReihenfolge[iSchritt].eAblauf = AblaufStatus.aktor03Vor THEN
+				eAblaufStatus := AblaufStatus.aktor03Zurueck;
+				
+		ELSIF 		fbAktor[4].inAP()
+			AND		aReihenfolge[iSchritt].eAblauf = AblaufStatus.aktor04Vor THEN
+				eAblaufStatus := AblaufStatus.aktor04Zurueck;
+				
+		ELSIF 		fbAktor[5].inAP()
+			AND		aReihenfolge[iSchritt].eAblauf = AblaufStatus.aktor05Vor THEN
+				eAblaufStatus := AblaufStatus.aktor05Zurueck;
+				
+		ELSIF 		fbAktor[6].inAP()
+			AND		aReihenfolge[iSchritt].eAblauf = AblaufStatus.aktor06Vor THEN
+				eAblaufStatus := AblaufStatus.aktor06Zurueck;
+				
+		ELSE
+			eAblaufStatus := aReihenfolge[iSchritt].eAblauf;
+		END_IF
+
+
+	//eAblaufStatus := aReihenfolge[iSchritt].eAblauf;
+	aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+	
+ELSE
+	CASE aReihenfolge[iSchritt].eLetzterStatus OF
+		
+		//****************************************************************************************	
+		//****************************************************************************************
+		AblaufStatus.aktor01Vor:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[1].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor01Zurueck;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor01Vor;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		AblaufStatus.aktor01Zurueck:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[1].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor01Vor;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor01Zurueck;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		//****************************************************************************************
+		AblaufStatus.aktor02Vor:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[2].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor02Zurueck;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor02Vor;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		AblaufStatus.aktor02Zurueck:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[2].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor02Vor;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor02Zurueck;
+			END_IF	
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		//****************************************************************************************
+		AblaufStatus.aktor03Vor:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[3].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor03Zurueck;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor03Vor;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		AblaufStatus.aktor03Zurueck:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[3].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor03Vor;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor03Zurueck;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		//****************************************************************************************
+		AblaufStatus.aktor04Vor:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[4].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor04Zurueck;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor04Vor;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		AblaufStatus.aktor04Zurueck:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[4].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor04Vor;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor04Zurueck;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		//****************************************************************************************
+		AblaufStatus.aktor05Vor:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[5].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor05Zurueck;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor05Vor;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		AblaufStatus.aktor05Zurueck:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[5].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor05Vor;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor05Zurueck;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		//****************************************************************************************
+		AblaufStatus.aktor06Vor:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[6].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor06Zurueck;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor06Vor;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;
+			
+		//****************************************************************************************	
+		AblaufStatus.aktor06Zurueck:
+			IF			MAIN.HMI.ProgrammTemp.aAktorKonfig[6].bReversierBetrieb THEN
+				eAblaufStatus := AblaufStatus.aktor06Vor;
+			ELSE
+				eAblaufStatus := AblaufStatus.aktor06Zurueck;
+			END_IF
+			aReihenfolge[iSchritt].eLetzterStatus := eAblaufStatus;	
+	ELSE
+			eAblaufStatus := aReihenfolge[iSchritt].eAblauf;
+			
+	END_CASE	
+END_IF
+
+
+ablaufSchreiben := eAblaufStatus;
+
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="init" Id="{319694de-c8f1-48d6-91e1-37a51046f423}">
+      <Declaration><![CDATA[METHOD init : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE eInitStatus OF
+	//***********************************************************************************************
+	InitStatus.bereit:
+			
+		IF 		NOT stStationInfo.bInitBeendet THEN
+			EventLogger.aMessage[10].ipArguments.Clear().AddString('Aktoren');
+			EventLogger.aMessage[10].Send(0);
+			bTeilBearbeiten := FALSE;									// Hier richtig?
+			eInitStatus := InitStatus.aktor1;
+		END_IF
+		
+	//***********************************************************************************************
+	InitStatus.aktor1:
+		
+		IF		fbAktor[1].ruhePos() THEN
+			eInitStatus := InitStatus.aktor2;
+		END_IF
+
+	//***********************************************************************************************
+	InitStatus.aktor2:
+	
+		IF		fbAktor[2].ruhePos() THEN
+			eInitStatus := InitStatus.aktor3;
+		END_IF
+
+	//***********************************************************************************************
+	InitStatus.aktor3:
+	
+		IF		fbAktor[3].ruhePos() THEN
+			eInitStatus := InitStatus.aktor4;
+		END_IF
+
+	//***********************************************************************************************
+	InitStatus.aktor4:
+	
+		IF		fbAktor[4].ruhePos() THEN
+			eInitStatus := InitStatus.aktor5;
+		END_IF
+
+	//***********************************************************************************************
+	InitStatus.aktor5:
+	
+		IF		fbAktor[5].ruhePos() THEN
+			eInitStatus := InitStatus.aktor6;
+		END_IF
+
+	//***********************************************************************************************
+	InitStatus.aktor6:	
+	
+		IF		fbAktor[6].ruhePos() THEN
+			eInitStatus := InitStatus.fertig;
+		END_IF
+	
+	//***********************************************************************************************
+	InitStatus.fertig:
+		
+		EventLogger.aMessage[11].Send(0);
+		
+		stStationInfo.bInitBeendet := TRUE;
+		MAIN.bProduzieren := FALSE;
+		eInitStatus := InitStatus.bereit;
+	
+END_CASE
+
+init := stStationInfo.bInitBeendet;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="reihenfolgeSchreiben" Id="{e1e7a774-99fb-4024-b8ea-7ad7dc842121}">
+      <Declaration><![CDATA[METHOD reihenfolgeSchreiben : bool
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[nZyklusZaehler := 0;
+
+FOR i := 1 TO Parameter.cAnzSchritte DO	 	
+	
+	aReihenfolge[i].eAblauf := MAIN.HMI.ProgrammTemp.aAktorBew[i].eAblaufStatus;
+
+	// Den Aktoren die Zeiten zuweisen aus dem Programm
+	IF			aReihenfolge[i].eAblauf = Ablaufstatus.aktor01Vor
+		OR		aReihenfolge[i].eAblauf = Ablaufstatus.aktor01Zurueck THEN
+			aReihenfolge[i].tFahrzeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[1].tFahrZeit;
+			aReihenfolge[i].tHalteZeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[1].tHalteZeit;
+			
+	ELSIF		aReihenfolge[i].eAblauf = Ablaufstatus.aktor02Vor
+		OR		aReihenfolge[i].eAblauf = Ablaufstatus.aktor02Zurueck THEN
+			aReihenfolge[i].tFahrzeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[2].tFahrZeit;
+			aReihenfolge[i].tHalteZeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[2].tHalteZeit;
+	
+	ELSIF		aReihenfolge[i].eAblauf = Ablaufstatus.aktor03Vor
+		OR		aReihenfolge[i].eAblauf = Ablaufstatus.aktor03Zurueck THEN
+			aReihenfolge[i].tFahrzeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[3].tFahrZeit;
+			aReihenfolge[i].tHalteZeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[3].tHalteZeit;
+			
+	ELSIF		aReihenfolge[i].eAblauf = Ablaufstatus.aktor04Vor
+		OR		aReihenfolge[i].eAblauf = Ablaufstatus.aktor04Zurueck THEN
+			aReihenfolge[i].tFahrzeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[4].tFahrZeit;
+			aReihenfolge[i].tHalteZeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[4].tHalteZeit;
+			
+	ELSIF		aReihenfolge[i].eAblauf = Ablaufstatus.aktor05Vor
+		OR		aReihenfolge[i].eAblauf = Ablaufstatus.aktor05Zurueck THEN
+			aReihenfolge[i].tFahrzeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[5].tFahrZeit;
+			aReihenfolge[i].tHalteZeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[5].tHalteZeit;
+			
+	ELSIF		aReihenfolge[i].eAblauf = Ablaufstatus.aktor06Vor
+		OR		aReihenfolge[i].eAblauf = Ablaufstatus.aktor06Zurueck THEN
+			aReihenfolge[i].tFahrzeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[6].tFahrZeit;
+			aReihenfolge[i].tHalteZeit := MAIN.HMI.ProgrammTemp.aAktorKonfig[6].tHalteZeit;
+	END_IF
+END_FOR	
+
+reihenfolgeSchreiben := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="reset" Id="{25cad2b3-7140-40c3-b6e8-4829d71ebb68}">
+      <Declaration><![CDATA[METHOD reset : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE eResetStatus OF
+	
+	//***********************************************************************************************
+	ResetStatus.bereit:
+		
+		eResetStatus := ResetStatus.ablaufAbbrechen;
+		iSchritt := 1;
+		
+	//***********************************************************************************************
+	ResetStatus.ablaufAbbrechen:
+		
+		eAblaufStatus 		:= AblaufStatus.bereit;
+		fbSchrittbetrieb.reset();
+		eResetStatus 		:= ResetStatus.aktoren;
+	
+
+		
+	//***********************************************************************************************
+	ResetStatus.aktoren:	
+		FOR i:= 1 TO Parameter.cAnzAktoren DO
+			fbAktor[i].bHandOverride := NOT MAIN.bE_SafetyProgStop;
+			IF			fbAktor[i].ruhePos() THEN
+				eResetStatus 		:= ResetStatus.fertig;
+				fbAktor[i].bHandOverride := FALSE;
+			END_IF
+		END_FOR
+	
+	//***********************************************************************************************
+	ResetStatus.fertig:
+		
+		eInitStatus := InitStatus.bereit;
+		
+		IF 			stStationInfo.bInitBeendet THEN		//Wenn schon initialisiert wurde, wird ein reinit durchgeführt
+			stStationInfo.bInit := TRUE;				//War die Station schon am init, wurde bInit nie false und das init startet erneut
+			stStationInfo.bInitBeendet := FALSE;
+		END_IF
+		
+		reset := TRUE;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="teilBearbeiten" Id="{72a7a9ec-952e-47e9-b71f-088564088e8a}">
+      <Declaration><![CDATA[METHOD teilBearbeiten : BOOL
+VAR_INST
+	//fbMessage:	FB_Message;
+	fbTon:		TON;
+	fbTonHalten:	TON;
+	tTime:		TIME;
+END_VAR
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE eAblaufStatus OF
+	
+	AblaufStatus.bereit:
+		IF			fbFlankeSchritt.Q 
+			OR NOT	bSchrittbetriebAktiv THEN
+			eAblaufStatus := AblaufStatus.schritt;
+		END_IF
+		
+//****************************************************************************************
+	AblaufStatus.schritt:		
+		IF			aReihenfolge[iSchritt].eAblauf <> 	AblaufStatus.default  THEN
+			eAblaufStatus := ablaufSchreiben();
+			//eAblaufStatus := aReihenfolge[iSchritt].eAblauf;						// wird über Methode "ablaufSchreiben" erledigt
+			fbTon(IN := FALSE, PT := aReihenfolge[iSchritt].tFahrzeit);		
+			fbTonHalten(IN := FALSE, PT := aReihenfolge[iSchritt].tHaltezeit);	
+		ELSE
+			eAblaufStatus := AblaufStatus.fertig;
+			nZyklusZaehler := nZyklusZaehler + 1;
+			iSchritt := 1;
+		END_IF
+		
+	//****************************************************************************************
+	AblaufStatus.aktor01Vor:
+	
+		IF			fbAktor[1].arbeitsPos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+	
+	//****************************************************************************************
+	AblaufStatus.aktor01Zurueck:
+	
+		IF			fbAktor[1].ruhePos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+	
+	//****************************************************************************************
+	AblaufStatus.aktor02Vor:
+	
+		IF			fbAktor[2].arbeitsPos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+	
+	//****************************************************************************************
+	AblaufStatus.aktor02Zurueck:
+	
+		IF			fbAktor[2].ruhePos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+
+	//****************************************************************************************
+	AblaufStatus.aktor03Vor:
+	
+		IF			fbAktor[3].arbeitsPos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+	
+	//****************************************************************************************
+	AblaufStatus.aktor03Zurueck:
+	
+		IF			fbAktor[3].ruhePos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+
+	//****************************************************************************************
+	AblaufStatus.aktor04Vor:
+	
+		IF			fbAktor[4].arbeitsPos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+	
+	//****************************************************************************************
+	AblaufStatus.aktor04Zurueck:
+	
+		IF			fbAktor[4].ruhePos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+
+	//****************************************************************************************
+	AblaufStatus.aktor05Vor:
+	
+		IF			fbAktor[5].arbeitsPos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+	
+	//****************************************************************************************
+	AblaufStatus.aktor05Zurueck:	
+	
+		IF			fbAktor[5].ruhePos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+
+	//****************************************************************************************
+	AblaufStatus.aktor06Vor:
+	
+		IF			fbAktor[6].arbeitsPos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+	
+	//****************************************************************************************
+	AblaufStatus.aktor06Zurueck:	
+	
+		IF			fbAktor[6].ruhePos() THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+		
+	//***********************************************************************************************
+	AblaufStatus.warten:	
+		
+		fbTon(IN := TRUE);
+		IF			fbton.Q THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+		
+	//***********************************************************************************************
+	AblaufStatus.error:
+
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+
+	//***********************************************************************************************
+	AblaufStatus.extGeraetBereit:
+
+		IF		bE_extGeraetBereit	THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+		END_IF
+		
+	//***********************************************************************************************
+	AblaufStatus.extGeraetStart:
+		
+		bA_extGeraetStart := TRUE;
+		IF		NOT	bE_extGeraetBereit	THEN
+			eAblaufStatus := AblaufStatus.extGeraetFertig;		
+		END_IF	
+		
+	//***********************************************************************************************
+	AblaufStatus.extGeraetFertig:
+		IF		bE_extGeraetBereit	THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;
+			bA_extGeraetStart := FALSE;
+		END_IF
+			
+	//***********************************************************************************************		
+	AblaufStatus.teilAnwesend:
+		
+		IF			bSensorTeilAnwesend THEN
+			eAblaufStatus := AblaufStatus.naechsterSchritt;	
+		END_IF
+	
+	//***********************************************************************************************
+	AblaufStatus.naechsterSchritt:
+	
+		fbTonHalten(IN := TRUE);
+		IF			fbTonHalten.Q 
+			AND NOT	MAIN.bE_Taste_Schritt THEN
+			iSchritt := iSchritt + 1;
+			eAblaufStatus := AblaufStatus.bereit;
+		END_IF
+		
+	//***********************************************************************************************
+	AblaufStatus.fertig:		
+	
+			eAblaufStatus := AblaufStatus.bereit;
+			teilbearbeiten := TRUE;
+			MAIN.bProduzieren := FALSE;
+			MAIN.zaehlerGut();
+		
+END_CASE
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Station01">
+      <LineId Id="7393" Count="1" />
+      <LineId Id="6902" Count="1" />
+      <LineId Id="7877" Count="0" />
+      <LineId Id="7876" Count="0" />
+      <LineId Id="6908" Count="0" />
+      <LineId Id="7872" Count="0" />
+      <LineId Id="6909" Count="11" />
+      <LineId Id="7039" Count="0" />
+      <LineId Id="6922" Count="0" />
+      <LineId Id="7140" Count="1" />
+      <LineId Id="7139" Count="0" />
+      <LineId Id="7040" Count="0" />
+      <LineId Id="7046" Count="0" />
+      <LineId Id="6923" Count="0" />
+      <LineId Id="7142" Count="2" />
+      <LineId Id="7042" Count="0" />
+      <LineId Id="7644" Count="0" />
+      <LineId Id="7649" Count="1" />
+      <LineId Id="7645" Count="0" />
+      <LineId Id="7647" Count="1" />
+      <LineId Id="7646" Count="0" />
+      <LineId Id="7030" Count="0" />
+      <LineId Id="7388" Count="0" />
+      <LineId Id="7037" Count="0" />
+      <LineId Id="7386" Count="0" />
+      <LineId Id="7385" Count="0" />
+      <LineId Id="7389" Count="2" />
+      <LineId Id="7150" Count="0" />
+      <LineId Id="7146" Count="0" />
+      <LineId Id="7145" Count="0" />
+      <LineId Id="7147" Count="0" />
+      <LineId Id="7149" Count="0" />
+      <LineId Id="7148" Count="0" />
+      <LineId Id="7151" Count="0" />
+      <LineId Id="6933" Count="50" />
+      <LineId Id="7748" Count="14" />
+      <LineId Id="6984" Count="9" />
+      <LineId Id="7399" Count="0" />
+      <LineId Id="7398" Count="0" />
+      <LineId Id="7401" Count="0" />
+      <LineId Id="7408" Count="3" />
+      <LineId Id="7417" Count="7" />
+      <LineId Id="7426" Count="7" />
+      <LineId Id="7402" Count="0" />
+      <LineId Id="6994" Count="9" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Station01.ablaufSchreiben">
+      <LineId Id="7" Count="1" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="14" Count="2" />
+      <LineId Id="178" Count="0" />
+      <LineId Id="183" Count="0" />
+      <LineId Id="187" Count="1" />
+      <LineId Id="206" Count="1" />
+      <LineId Id="205" Count="0" />
+      <LineId Id="208" Count="0" />
+      <LineId Id="190" Count="1" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="214" Count="1" />
+      <LineId Id="209" Count="0" />
+      <LineId Id="216" Count="0" />
+      <LineId Id="193" Count="1" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="210" Count="0" />
+      <LineId Id="196" Count="1" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="211" Count="0" />
+      <LineId Id="199" Count="1" />
+      <LineId Id="198" Count="0" />
+      <LineId Id="212" Count="0" />
+      <LineId Id="202" Count="1" />
+      <LineId Id="201" Count="0" />
+      <LineId Id="213" Count="0" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="204" Count="0" />
+      <LineId Id="186" Count="0" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="20" Count="1" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="81" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="52" Count="1" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="164" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="49" Count="1" />
+      <LineId Id="54" Count="1" />
+      <LineId Id="165" Count="1" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="66" Count="0" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="67" Count="4" />
+      <LineId Id="167" Count="1" />
+      <LineId Id="73" Count="6" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="169" Count="0" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="84" Count="7" />
+      <LineId Id="170" Count="0" />
+      <LineId Id="92" Count="6" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="171" Count="0" />
+      <LineId Id="99" Count="0" />
+      <LineId Id="101" Count="7" />
+      <LineId Id="172" Count="0" />
+      <LineId Id="109" Count="6" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="173" Count="0" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="118" Count="7" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="126" Count="7" />
+      <LineId Id="175" Count="0" />
+      <LineId Id="134" Count="0" />
+      <LineId Id="136" Count="7" />
+      <LineId Id="176" Count="0" />
+      <LineId Id="144" Count="6" />
+      <LineId Id="135" Count="0" />
+      <LineId Id="177" Count="0" />
+      <LineId Id="151" Count="1" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="161" Count="1" />
+      <LineId Id="160" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Station01.init">
+      <LineId Id="5" Count="6" />
+      <LineId Id="183" Count="0" />
+      <LineId Id="13" Count="2" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="157" Count="0" />
+      <LineId Id="201" Count="0" />
+      <LineId Id="205" Count="1" />
+      <LineId Id="204" Count="0" />
+      <LineId Id="187" Count="1" />
+      <LineId Id="186" Count="0" />
+      <LineId Id="207" Count="0" />
+      <LineId Id="209" Count="1" />
+      <LineId Id="208" Count="0" />
+      <LineId Id="190" Count="1" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="211" Count="0" />
+      <LineId Id="213" Count="1" />
+      <LineId Id="212" Count="0" />
+      <LineId Id="193" Count="1" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="215" Count="0" />
+      <LineId Id="217" Count="1" />
+      <LineId Id="216" Count="0" />
+      <LineId Id="196" Count="1" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="219" Count="0" />
+      <LineId Id="221" Count="1" />
+      <LineId Id="220" Count="0" />
+      <LineId Id="199" Count="1" />
+      <LineId Id="198" Count="0" />
+      <LineId Id="223" Count="0" />
+      <LineId Id="225" Count="1" />
+      <LineId Id="224" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="47" Count="1" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="50" Count="2" />
+      <LineId Id="228" Count="0" />
+      <LineId Id="55" Count="3" />
+      <LineId Id="4" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Station01.reihenfolgeSchreiben">
+      <LineId Id="6" Count="0" />
+      <LineId Id="15" Count="37" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Station01.reset">
+      <LineId Id="5" Count="5" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="11" Count="4" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="146" Count="0" />
+      <LineId Id="151" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="163" Count="1" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="162" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="78" Count="10" />
+      <LineId Id="4" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Station01.teilBearbeiten">
+      <LineId Id="4" Count="1" />
+      <LineId Id="340" Count="0" />
+      <LineId Id="827" Count="0" />
+      <LineId Id="839" Count="0" />
+      <LineId Id="720" Count="0" />
+      <LineId Id="722" Count="0" />
+      <LineId Id="829" Count="0" />
+      <LineId Id="831" Count="0" />
+      <LineId Id="830" Count="0" />
+      <LineId Id="832" Count="0" />
+      <LineId Id="848" Count="0" />
+      <LineId Id="833" Count="4" />
+      <LineId Id="863" Count="0" />
+      <LineId Id="838" Count="0" />
+      <LineId Id="620" Count="0" />
+      <LineId Id="851" Count="0" />
+      <LineId Id="617" Count="0" />
+      <LineId Id="341" Count="0" />
+      <LineId Id="662" Count="3" />
+      <LineId Id="661" Count="0" />
+      <LineId Id="632" Count="0" />
+      <LineId Id="631" Count="0" />
+      <LineId Id="666" Count="0" />
+      <LineId Id="668" Count="1" />
+      <LineId Id="667" Count="0" />
+      <LineId Id="633" Count="0" />
+      <LineId Id="635" Count="0" />
+      <LineId Id="670" Count="3" />
+      <LineId Id="634" Count="0" />
+      <LineId Id="636" Count="0" />
+      <LineId Id="638" Count="0" />
+      <LineId Id="637" Count="0" />
+      <LineId Id="690" Count="0" />
+      <LineId Id="692" Count="1" />
+      <LineId Id="691" Count="0" />
+      <LineId Id="640" Count="1" />
+      <LineId Id="674" Count="3" />
+      <LineId Id="642" Count="2" />
+      <LineId Id="694" Count="3" />
+      <LineId Id="639" Count="0" />
+      <LineId Id="646" Count="1" />
+      <LineId Id="678" Count="3" />
+      <LineId Id="648" Count="2" />
+      <LineId Id="698" Count="3" />
+      <LineId Id="645" Count="0" />
+      <LineId Id="652" Count="1" />
+      <LineId Id="682" Count="3" />
+      <LineId Id="654" Count="2" />
+      <LineId Id="702" Count="3" />
+      <LineId Id="651" Count="0" />
+      <LineId Id="568" Count="0" />
+      <LineId Id="657" Count="0" />
+      <LineId Id="686" Count="3" />
+      <LineId Id="658" Count="2" />
+      <LineId Id="706" Count="3" />
+      <LineId Id="245" Count="0" />
+      <LineId Id="590" Count="0" />
+      <LineId Id="623" Count="0" />
+      <LineId Id="594" Count="0" />
+      <LineId Id="730" Count="0" />
+      <LineId Id="733" Count="0" />
+      <LineId Id="714" Count="0" />
+      <LineId Id="731" Count="1" />
+      <LineId Id="852" Count="0" />
+      <LineId Id="715" Count="0" />
+      <LineId Id="751" Count="2" />
+      <LineId Id="755" Count="6" />
+      <LineId Id="809" Count="0" />
+      <LineId Id="762" Count="5" />
+      <LineId Id="754" Count="0" />
+      <LineId Id="816" Count="0" />
+      <LineId Id="821" Count="1" />
+      <LineId Id="817" Count="0" />
+      <LineId Id="823" Count="1" />
+      <LineId Id="811" Count="0" />
+      <LineId Id="853" Count="0" />
+      <LineId Id="810" Count="0" />
+      <LineId Id="807" Count="0" />
+      <LineId Id="812" Count="3" />
+      <LineId Id="808" Count="0" />
+      <LineId Id="779" Count="0" />
+      <LineId Id="778" Count="0" />
+      <LineId Id="793" Count="2" />
+      <LineId Id="828" Count="0" />
+      <LineId Id="781" Count="0" />
+      <LineId Id="780" Count="0" />
+      <LineId Id="796" Count="0" />
+      <LineId Id="854" Count="0" />
+      <LineId Id="749" Count="0" />
+      <LineId Id="716" Count="1" />
+      <LineId Id="713" Count="0" />
+      <LineId Id="718" Count="0" />
+      <LineId Id="790" Count="0" />
+      <LineId Id="872" Count="0" />
+      <LineId Id="622" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="570" Count="1" />
+      <LineId Id="569" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

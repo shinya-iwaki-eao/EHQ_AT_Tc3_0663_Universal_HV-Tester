@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="AktorStatus" Id="{cddc2ffb-e141-4e0b-834b-0b45c595cd86}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE AktorStatus :
+(
+	default := 0,
+	inRP,
+	inAP,
+	
+	zuRP,
+	zuAP
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

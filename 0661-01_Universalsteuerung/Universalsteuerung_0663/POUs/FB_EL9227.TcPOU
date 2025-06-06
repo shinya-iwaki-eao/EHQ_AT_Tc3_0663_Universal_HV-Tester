@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_EL9227" Id="{8554d6f4-ab7b-4b49-9d82-9d5a97cd14ea}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_EL9227
+VAR_INPUT
+		sBezeichnung:	STRING;							// Klemmenbezeichnung
+END_VAR
+VAR_OUTPUT
+		bStoerung:		BOOL;
+		stKanal:		ARRAY[1..2] OF ST_EL9227_IN;
+		fCurrent:		ARRAY[1..2] OF REAL;			// Umrechunung in A		[1 = 0.01A]
+		fVoltageIn:		ARRAY[1..2] OF REAL;			// Umrechunung in V		[1 = 0.1V]
+		fVoltageOut:	ARRAY[1..2] OF REAL;			// Umrechunung in V		[1 = 0.1V]
+END_VAR
+VAR
+		nErrorId:		INT;
+		sKanal:			ARRAY[1..2] OF STRING;						// String mit Kanalnummer für Fehlermeldung
+		i:				INT;
+		fbTrig:			ARRAY[1..2] OF F_TRIG;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+//***********************************************************************************************
+//Fehlermeldung  ==> Aufbau des Fehlertext: Überstromschutzklemme "180A0" Kanal "1" "Kurzschluss"
+sKanal[1] := '1 ';
+sKanal[2] := '2 ';
+
+FOR i := 1 TO 2 DO
+	
+	fbTrig[i](CLK := stKanal[i].stStatus.bEnabled);
+	
+	//FOR i := 1 TO 2 DO
+	IF 			fbTrig[i].Q THEN
+		//Kurzschluss
+		IF		stKanal[i].stStatus.bShortCircuit THEN
+			EventLogger.aErrorLog[nErrorId].ipArguments.Clear().AddString(sBezeichnung).AddString(sKanal[i]).AddString('Kurzschluss');		
+			
+		//Überlast
+		ELSIF		stKanal[i].stStatus.bOverload THEN
+			EventLogger.aErrorLog[nErrorId].ipArguments.Clear().AddString(sBezeichnung).AddString(sKanal[i]).AddString('Überlast');		
+			
+		//Hardwareschutz
+		ELSIF		stKanal[i].stStatus.bHardwareProtection  THEN
+			EventLogger.aErrorLog[nErrorId].ipArguments.Clear().AddString(sBezeichnung).AddString(sKanal[i]).AddString('Hardwareschutz ausgelöst');		
+			
+		//Überspannung
+		ELSIF		stKanal[i].stStatus.bOvervoltage THEN
+			EventLogger.aErrorLog[nErrorId].ipArguments.Clear().AddString(sBezeichnung).AddString(sKanal[i]).AddString('Überspannung');		
+			
+		//Unterspannung
+		ELSIF		stKanal[i].stStatus.bUndervoltage THEN
+			EventLogger.aErrorLog[nErrorId].ipArguments.Clear().AddString(sBezeichnung).AddString(sKanal[i]).AddString('Unterspannung');		
+			
+		//Kanal ausgeschaltet durch Taster
+		ELSIF		stKanal[i].stStatus.bDisabledBySwitch THEN
+			EventLogger.aErrorLog[nErrorId].ipArguments.Clear().AddString(sBezeichnung).AddString(sKanal[i]).AddString('ausgeschaltet durch Taster');
+	
+		//Kanal ausgeschaltet durch Ausgang
+		ELSIF		stKanal[i].stStatus.bDisabledByOutput THEN
+			EventLogger.aErrorLog[nErrorId].ipArguments.Clear().AddString(sBezeichnung).AddString(sKanal[i]).AddString('ausgeschaltet durch Ausgang');		
+			
+		END_IF
+		EventLogger.aErrorLog[nErrorId].Send(0);
+	END_IF	
+	
+	fCurrent[i] 	:= INT_TO_REAL(stKanal[i].nCurrent)		/	100;
+	fVoltageIn[i] 	:= INT_TO_REAL(stKanal[i].nVoltageIn)	/	10;
+	fVoltageOut[i] 	:= INT_TO_REAL(stKanal[i].nVoltageOut)	/	10;
+	
+	
+END_FOR
+
+IF			stKanal[1].stStatus.bEnabled
+	AND		stKanal[2].stStatus.bEnabled THEN
+	bStoerung := FALSE;	
+ELSE
+	bStoerung := TRUE;	
+END_IF
+
+
+]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{22168f11-f439-4f00-a557-ac78dbb21029}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	
+	nErrorId:		INT;
+	sBezeichnung:	STRING;	
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.nErrorId		:= nErrorId;
+THIS^.sBezeichnung	:= sBezeichnung;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_EL9227">
+      <LineId Id="470" Count="58" />
+      <LineId Id="275" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL9227.FB_init">
+      <LineId Id="7" Count="0" />
+      <LineId Id="11" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Output" Id="{349d6daf-aa03-49e5-9785-0747744313b0}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Output
+VAR_INPUT
+	bHandOverride:				BOOL;			//Wenn true kann der Ausgang auch im Handbetrieb geschrieben werden	
+	fbSchrittbetrieb:			REFERENCE TO FB_Schrittbetrieb;
+	bSendFalschePosError:		BOOL;
+END_VAR
+VAR_OUTPUT
+	bFalschePos:				BOOL;
+END_VAR
+VAR
+	bA_Output					AT%Q*: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="reset" Id="{3ef3f526-7e68-49de-a456-f609397e3f29}">
+      <Declaration><![CDATA[METHOD reset : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	stSchrittEintrag:		ST_SchrittQueue;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stSchrittEintrag.fbOutput REF= THIS^;
+
+//*************************************************************************************
+IF		NOT Main.bE_Handbetrieb 
+	AND NOT Main.bProgStop
+	OR		bHandOverride
+
+	OR		MAIN.bE_Handbetrieb							//Schritt vorwaerts im Handbetrieb
+	AND		fbSchrittbetrieb.bAblaufFreigabe THEN
+	
+	//*************************************************************************************
+	IF		 	bA_Output THEN	//Beim Wechsel des Ausgangs Bewegung in queue aufnehmen
+		fbSchrittbetrieb.addToQueue(stSchrittEintrag);
+	END_IF
+	//*************************************************************************************
+	
+	bA_Output := FALSE;
+	reset := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="set" Id="{da626f42-85ff-4793-89fb-bdfde239e8da}">
+      <Declaration><![CDATA[METHOD set : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	stSchrittEintrag:		ST_SchrittQueue;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[stSchrittEintrag.fbOutput REF= THIS^;	
+stSchrittEintrag.bGesetzt := TRUE;
+
+//*************************************************************************************
+IF		NOT Main.bE_Handbetrieb 
+	AND NOT Main.bProgStop
+	OR		bHandOverride
+
+	OR		MAIN.bE_Handbetrieb							//Schritt vorwaerts im Handbetrieb
+	AND		fbSchrittbetrieb.bAblaufFreigabe THEN
+	
+	//*************************************************************************************
+	IF		NOT bA_Output THEN	//Beim Wechsel des Ausgangs Bewegung in queue aufnehmen
+		fbSchrittbetrieb.addToQueue(stSchrittEintrag);
+	END_IF
+	//*************************************************************************************
+	
+	bA_Output := TRUE;
+	set := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Output">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Output.reset">
+      <LineId Id="12" Count="0" />
+      <LineId Id="14" Count="15" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="10" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Output.set">
+      <LineId Id="13" Count="16" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="32" Count="1" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

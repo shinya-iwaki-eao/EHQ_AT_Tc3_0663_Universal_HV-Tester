@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="Exc" Id="{7e28df42-000c-475c-9a15-dfbda1efe3b6}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	nCheckBounds              : INT;
+    nCheckBounds_OutOfBoundsUpper  : INT;
+	nCheckBounds_OutOfBoundsLower  : INT;
+    myException               : __SYSTEM.ExceptionCode;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

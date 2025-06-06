@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="Wartungen" Id="{e5822a0c-fbf2-4a55-9d08-743daa96040f}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE Wartungen :
+(
+	nothaltAustauschen			:= 1,
+	zweihandSchalterAustauschen	:= 2
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

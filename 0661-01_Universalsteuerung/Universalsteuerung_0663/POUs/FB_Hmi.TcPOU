@@ -1,0 +1,662 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Hmi" Id="{d89572e0-3290-41ca-a712-5203cef65ee2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Hmi
+VAR
+	
+	// FB
+	fbDatei:			FB_Datei;
+	bDateiSchreiben: BOOL;
+	
+	
+	//Infostatusbar
+	sStatus:				STRING(255);
+	eStatusbarFarbe:		StatusbarFarbe := 0;
+	
+	nColorInfoBalken:		DWORD;
+	
+	//Programmauswahl		
+	sArtikelProgrammTemp:	STRING; //InputTextbox	
+	stQrCode:						ST_QrCode;
+
+	bAuftragGeladen:		BOOL;
+
+	//Vorwahlablauf
+	eAblaufStatus:			AblaufStatus := AblaufStatus.bereit;
+	//fbMessage:				FB_Message;	
+
+	bWartungAnstehend:		BOOL;
+	
+	ProgrammLeer:			ST_Programme;
+	aProgrammNamen:			ARRAY[1..Parameter.cMaxProgramme] OF STRING;
+	
+	bBtnProgrammSpeichern:	BOOL;
+	bBtnProgrammLoeschen:	BOOL;
+	bBtnProgrammAnzeigen:	BOOL;
+	bBtnKonfigLeeren:		BOOL;
+	bBtnDateiSchreiben:		BOOL;
+	bBtnDateiLesen:			BOOL;
+	
+	//aAktorBew:		ARRAY [1..Parameter.cAnzSchritte] OF ST_AktorKonfig;
+	//aAktorBewTemp:	ARRAY [1..Parameter.cAnzSchritte] OF ST_AktorKonfig;
+
+	nFreierPlatz: 	INT;
+	nNamenCheck: 	INT;
+	i:				INT;
+	
+	bPopUpUeberschreiben:	BOOL;
+	bPopUpLoeschen:			BOOL;
+	bPopUpAnzeigen:			BOOL;
+	bBtnPopUpJa: 			BOOL;
+	bBtnPopUpNein:			BOOL;
+	sPopUpText:				STRING;
+	
+	nPopUpXOffset:			INT;
+	bBtnProgrammLaden:		BOOL;
+	nEnumWandeln: 			INT;
+	bProgrammeSchreiben: 	BOOL;
+	bProgrammGeladen:		BOOL;
+	nLetztesProgramm:		INT;
+	bInit: 					BOOL := TRUE;
+	bProgeammLadenBtnInaktiv: BOOL;
+	bBtnSchrittbetrieb:	BOOL;
+	
+END_VAR
+
+VAR_INPUT
+	sQrCode:				STRING;
+	bBtnAnzeigeStation:		BOOL;
+	bProgrammAngewaehlt:	BOOL;
+	ProgrammTemp:			ST_Programme;
+END_VAR
+
+VAR_OUTPUT
+	nAnzeigeStation:		INT := 1;
+	sStationStatus:			STRING;
+	nAngewaehltesProg:		INT;
+END_VAR
+
+
+VAR_INPUT PERSISTENT
+	aProgramm:				ARRAY[1..Parameter.cMaxProgramme] OF ST_Programme;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF			bBtnAnzeigeStation THEN
+	bBtnAnzeigeStation := FALSE;
+	nAnzeigeStation := nAnzeigeStation + 1;
+	IF			nAnzeigeStation > Parameter.cAnzStationen THEN
+			nAnzeigeStation := 1;
+	END_IF
+END_IF
+
+IF		nAnzeigeStation = 1 THEN
+	sStationStatus := MAIN.fbSt1.sStationsStatus;
+ELSIF	nAnzeigeStation = 2 THEN
+	;
+END_IF
+
+
+
+// Wartung anstehend
+(*
+bWartungAnstehend := 	MAIN.fbSt1.bWarnungNothalt
+					OR	MAIN.fbSt1.bWarnungZweiHand;
+*)
+
+//Programm abspeichern
+CASE eAblaufStatus OF
+	
+	//***********************************************************************************************
+	AblaufStatus.bereit: 
+		//MAIN.fbWritePersistentData.START := FALSE;
+		IF			bBtnProgrammSpeichern THEN
+			bBtnProgrammSpeichern := FALSE;
+			FOR i := 1 TO Parameter.cAnzAktoren DO
+				ProgrammTemp.aAktorKonfig[i].tFahrZeit := UINT_TO_TIME(ProgrammTemp.aAktorKonfig[i].nFahrZeit);
+				ProgrammTemp.aAktorKonfig[i].tHalteZeit := UINT_TO_TIME(ProgrammTemp.aAktorKonfig[i].nHalteZeit);
+			END_FOR
+			eAblaufStatus := AblaufStatus.nameUeberpruefen;
+		ELSIF			bBtnProgrammLoeschen THEN
+			bBtnProgrammLoeschen := FALSE;
+			bPopUpLoeschen := TRUE;
+			eAblaufStatus := AblaufStatus.programmLoeschen;
+		ELSIF 			bBtnProgrammAnzeigen THEN
+			bBtnProgrammAnzeigen := FALSE;
+			eAblaufStatus := AblaufStatus.programmAnzeigen;
+		END_IF
+		
+	//***********************************************************************************************	
+	// Programmname vergleichen Rückgabewert: 1= Name nicht vergeben / X = Name vergeben Platznummer
+	AblaufStatus.nameUeberpruefen:	
+		nNamenCheck := 0;
+		nNamenCheck :=	programmNameCheck();
+		
+		IF			(nNamenCheck = 999) THEN
+			eAblaufStatus := AblaufStatus.freierPlatzsuchen;
+		ELSE			
+			// PopUp einblenden
+			eAblaufStatus := AblaufStatus.popUp;
+			bPopUpUeberschreiben := TRUE;
+		END_IF
+		
+	//***********************************************************************************************	
+	// Freier Programmplatz finden und speichern
+	AblaufStatus.freierPlatzsuchen:
+		
+		nFreierPlatz := 0;
+		nFreierPlatz := programmFreierPlatzSuchen();
+		
+		IF 		nFreierPlatz <> 0 THEN
+			programmTempLaden();
+			aProgramm[nFreierPlatz] := ProgrammTemp;
+			programmNamenSchreiben();
+			eAblaufStatus := AblaufStatus.bereit;
+			bProgrammGeladen := FALSE;
+			MAIN.bWritePersistentMan := TRUE;
+		END_IF
+		
+	//***********************************************************************************************	
+	// Freier Programmplatz finden
+	AblaufStatus.popUp:	
+	
+		IF			bBtnPopUpNein THEN
+			bBtnPopUpNein := FALSE;
+			eAblaufStatus := AblaufStatus.bereit;
+			bPopUpUeberschreiben := FALSE;
+		ELSIF		bBtnPopUpJa THEN
+			bBtnPopUpJa := FALSE;
+			programmTempLaden();
+			aProgramm[nNamenCheck] := ProgrammTemp;
+			programmNamenSchreiben();
+			eAblaufStatus := AblaufStatus.bereit;
+			MAIN.bWritePersistentMan := TRUE;
+			bProgrammGeladen := FALSE;
+			bPopUpUeberschreiben := FALSE;
+		END_IF
+		
+	//***********************************************************************************************	
+	// Programm anzeigen
+	AblaufStatus.programmAnzeigen:	
+		
+			nNamenCheck := 0;
+			nNamenCheck :=	programmNameCheck();
+			ProgrammTemp := aProgramm[nNamenCheck];
+			eAblaufStatus := AblaufStatus.bereit;
+		
+	//***********************************************************************************************	
+	// Programm löschen
+	AblaufStatus.programmLoeschen:		
+	
+		IF			bBtnPopUpNein THEN
+			bBtnPopUpNein := FALSE;
+			bPopUpLoeschen := FALSE;
+			eAblaufStatus := AblaufStatus.bereit;	
+		ELSIF		bBtnPopUpJa THEN	
+			bBtnPopUpJa := FALSE;
+			bPopUpLoeschen := FALSE;
+			nNamenCheck := 0;
+			nNamenCheck :=	programmNameCheck();
+			aProgramm[nNamenCheck] := ProgrammLeer;
+			ProgrammTemp := ProgrammLeer;
+			bProgrammGeladen := FALSE;
+			programmeAufraeumen ();
+			programmNamenSchreiben();
+			MAIN.bWritePersistentMan := TRUE;
+			eAblaufStatus := AblaufStatus.bereit;
+		END_IF
+	
+END_CASE
+
+// PopUp einblenden
+IF			bPopUpUeberschreiben
+	OR		bPopUpLoeschen THEN
+	bPopUpAnzeigen := TRUE;
+	nPopUpXOffset	:=	-800;			
+ELSE
+	bPopUpAnzeigen := FALSE;
+	nPopUpXOffset	:= 0;
+END_IF
+
+IF			bPopUpUeberschreiben THEN
+	sPopUpText := 'Soll das bestehende Programm überscherieben werden?';
+ELSIF		bPopUpLoeschen THEN
+	sPopUpText := 'Soll das angewählte Programm gelöscht werden?';
+END_IF
+
+//Programm laden
+IF			bBtnProgrammLaden 
+	AND		programmGueltig(nAngewaehltesProg) = 1 THEN
+	ProgrammTemp := ProgrammLeer;
+	ProgrammTemp := aProgramm[nAngewaehltesProg];
+	IF		NOT bProgrammGeladen THEN
+		MAIN.fbSt1.extReset();
+	END_IF
+	bProgrammGeladen := TRUE;
+	nLetztesProgramm := nAngewaehltesProg;	
+END_IF
+IF			nLetztesProgramm <> nAngewaehltesProg THEN
+	bProgrammGeladen := FALSE;
+END_IF
+
+IF			bBtnProgrammLaden
+	AND		bProgrammGeladen THEN
+	bBtnProgrammLaden := FALSE;
+END_IF
+
+
+
+// Prgramm laden Button inaktiv setzen
+IF			NOT	MAIN.bInitBeendet 
+		OR	NOT	(nAngewaehltesProg > 0) THEN
+	bProgeammLadenBtnInaktiv := TRUE;
+	bProgrammGeladen := FALSE;
+ELSE
+	bProgeammLadenBtnInaktiv := FALSE;
+	
+END_IF
+
+// Programm laden
+IF			(bBtnProgrammLaden 
+	AND NOT bProgrammGeladen)
+	OR 		bInit 	 
+	OR		bBtnProgrammSpeichern THEN
+	programmTempLaden();
+	programmNamenSchreiben();
+//	bProgrammAngewaehlt := TRUE;
+	bBtnProgrammLaden := FALSE;
+END_IF
+
+// Programmmaske leeren
+IF			bBtnKonfigLeeren THEN
+	bBtnKonfigLeeren := FALSE;
+	bProgrammgeladen := FALSE;
+	bProgrammAngewaehlt := FALSE;
+	ProgrammTemp := ProgrammLeer;
+END_IF
+
+// Schrittbetrieb
+IF			bBtnSchrittbetrieb THEN
+	MAIN.fbSt1.bSchrittbetriebAktiv := TRUE;
+ELSE
+	MAIN.fbSt1.bSchrittbetriebAktiv := FALSE;
+END_IF
+
+// Datei schreiben
+IF			bDateiSchreiben THEN
+	bDateiSchreiben := NOT fbDatei.schreiben();
+END_IF
+
+
+bInit := FALSE;
+
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <Method Name="programmeAufraeumen" Id="{9671fdc9-6188-4590-ab16-ad961d24d70c}">
+      <Declaration><![CDATA[METHOD programmeAufraeumen : BOOL
+VAR_INPUT
+END_VAR
+
+VAR
+	i: INT;
+	nErsterLeererPlatz: INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Leerer Platz suchen
+FOR i:=nAngewaehltesProg TO Parameter.cMaxProgramme DO
+	aProgramm[i] := aProgramm[i+1];
+END_FOR
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="programmExport" Id="{c9290412-d3cd-42f8-9750-39d929b05f3b}">
+      <Declaration><![CDATA[METHOD programmExport : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="programmFreierPlatzSuchen" Id="{1c66ad62-028d-4aec-b442-8c1485a33ccd}">
+      <Declaration><![CDATA[METHOD programmFreierPlatzSuchen : INT
+VAR_INPUT
+END_VAR
+
+VAR
+	i: INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i := 1 TO Parameter.cMaxProgramme DO
+	IF			aProgramm[i].sName = '' THEN
+		programmFreierPlatzSuchen := i;
+		EXIT;
+	END_IF
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="programmGueltig" Id="{37aa6626-5525-4be1-9c9b-62bd601f7c50}">
+      <Declaration><![CDATA[METHOD programmGueltig : INT
+VAR_INPUT
+	programmPlatz: INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Ausgabe: 
+// 1 = Programm gültig
+// 2 = Programm ungültig
+
+IF			aProgramm[programmPlatz].sName = '' THEN
+	programmGueltig := 2;
+ELSE
+	programmGueltig := 1;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="programmImport" Id="{2a6bd58a-750a-400c-b2d5-24b6c34269d4}">
+      <Declaration><![CDATA[METHOD programmImport : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="programmNameCheck" Id="{882ffbd4-3633-4e22-b58e-5d1bfa2884b0}">
+      <Declaration><![CDATA[METHOD programmNameCheck : INT
+VAR_INPUT
+END_VAR
+
+VAR
+	i: INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Sucht den eingegeben Programmnamen im Array
+// Wenn der Name nicht gefunden wird der Rückgabewert 999 zurückgegeben
+// wenn der Name gefunden wird wird der entsprechende Index zurückgegeben
+
+FOR i := 1 TO Parameter.cMaxProgramme DO
+	IF			ProgrammTemp.sName = aProgramm[i].sName THEN
+		programmNameCheck := i;
+		EXIT;
+	ELSE
+		programmNameCheck := 999;
+	END_IF
+END_FOR
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="programmNamenSchreiben" Id="{70f3c74d-6da0-4901-b0ab-8d6ce16e1a48}">
+      <Declaration><![CDATA[METHOD programmNamenSchreiben : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i := 1 TO Parameter.cMaxProgramme DO
+	// Programmnamen von ProgrammArray in Namen Array kopieren, braucht es für die Combo Box Array
+	aProgrammNamen[i] := aProgramm[i].sName; 
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="programmTempLaden" Id="{931e7ae8-9e2a-49e5-82da-8a46820d0a0f}">
+      <Declaration><![CDATA[METHOD programmTempLaden : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	i: INT;
+	j: INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i := 1 TO Parameter.cMaxProgramme DO
+	//DropDown INT in Enum wandeln
+	FOR j := 1 TO Parameter.cAnzSchritte DO
+		IF			ProgrammTemp.aAktorBew[j].nNummer = 0 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.default;
+		ELSIF			ProgrammTemp.aAktorBew[j].nNummer = 1 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor01Vor;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 2 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor01Zurueck;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 3 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor02Vor;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 4 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor02Zurueck;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 5 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor03Vor;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 6 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor03Zurueck;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 7 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor04Vor;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 8 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor04Zurueck;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 9 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor05Vor;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 10 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor05Zurueck;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 11 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor06Vor;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 12 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.aktor06Zurueck;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 13 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.teilAnwesend;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 14 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.extGeraetBereit;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 15 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.extGeraetStart;
+		ELSIF		ProgrammTemp.aAktorBew[j].nNummer = 16 THEN
+			ProgrammTemp.aAktorBew[j].eAblaufStatus := AblaufStatus.warten;
+		END_IF
+	END_FOR
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="programmTempLoeschen" Id="{08472d81-aa82-4c77-b951-f7439e5f0683}">
+      <Declaration><![CDATA[METHOD programmTempLoeschen : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[	ProgrammTemp.nNr := 0;
+	ProgrammTemp.sName := '';
+FOR	i := 1 TO Parameter.cAnzAktoren DO
+	ProgrammTemp.aAktorKonfig[i].nSensArbeitsPos := 0;
+	ProgrammTemp.aAktorKonfig[i].nSensRuhePos := 0;
+	ProgrammTemp.aAktorKonfig[i].nFahrZeit := 0;
+	ProgrammTemp.aAktorKonfig[i].tFahrZeit := T#0MS;
+	ProgrammTemp.aAktorKonfig[i].nHalteZeit := 0;
+	ProgrammTemp.aAktorKonfig[i].tHalteZeit := T#0MS;
+
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Status" Id="{a15e5f44-63a5-4ec9-aab8-254290ee086e}">
+      <Declaration><![CDATA[PROPERTY Status : STRING(255)]]></Declaration>
+      <Get Name="Get" Id="{12039a92-329e-47d8-be18-8e686c2c7362}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Status := sStatus;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{936afcd5-c0a2-4691-b0ec-e40b35f9e15f}">
+        <Declaration><![CDATA[VAR
+	
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[sStatus := Status;
+]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="StatusbarInfoSenden" Id="{4de38089-c339-4cac-b775-39ef4b320d83}">
+      <Declaration><![CDATA[METHOD StatusbarInfoSenden
+VAR_INPUT
+	sText : STRING;
+	eColor : StatusbarFarbe;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Status := sText ;
+
+//Farbe
+CASE eColor OF
+	StatusbarFarbe.gruen:	nColorInfoBalken := 16#FF39A64E;
+	StatusbarFarbe.orange:	nColorInfoBalken := 16#FFFFA600;
+	StatusbarFarbe.rot:		nColorInfoBalken := 16#FFE3001B;
+END_CASE
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="StatusbarSetzen" Id="{b48838ec-ca75-45d8-95f9-59b5a28a0f77}">
+      <Declaration><![CDATA[METHOD StatusbarSetzen : BOOL
+VAR_INPUT
+	sText : STRING;
+	eColor : StatusbarFarbe;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+
+Status := sText ;
+
+//Farbe
+CASE eColor OF
+	StatusbarFarbe.gruen:	nColorInfoBalken := 16#FF39A64E;
+	StatusbarFarbe.orange:	nColorInfoBalken := 16#FFFFA600;
+	StatusbarFarbe.rot:		nColorInfoBalken := 16#FFE3001B;
+	StatusbarFarbe.blau:	nColorInfoBalken := 16#FF0080FF;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="StatusFarbe" Id="{65f9e62a-3218-455d-9d51-42200f3a8fd4}">
+      <Declaration><![CDATA[PROPERTY StatusFarbe : StatusbarFarbe]]></Declaration>
+      <Get Name="Get" Id="{cb7df3b9-590d-4342-841b-3bb8e6ff73ee}">
+        <Declaration><![CDATA[VAR
+END_VAR
+
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[StatusFarbe := eStatusbarFarbe;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{50eafa64-5ebf-470e-b074-86d175f6c5bb}">
+        <Declaration><![CDATA[VAR	
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[eStatusbarFarbe := StatusFarbe;
+]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <LineIds Name="FB_Hmi">
+      <LineId Id="9090" Count="178" />
+      <LineId Id="9270" Count="1" />
+      <LineId Id="9303" Count="0" />
+      <LineId Id="9272" Count="30" />
+      <LineId Id="5754" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.programmeAufraeumen">
+      <LineId Id="5" Count="0" />
+      <LineId Id="37" Count="2" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="26" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.programmExport">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.programmFreierPlatzSuchen">
+      <LineId Id="5" Count="1" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.programmGueltig">
+      <LineId Id="5" Count="0" />
+      <LineId Id="7" Count="1" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="14" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.programmImport">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.programmNameCheck">
+      <LineId Id="25" Count="0" />
+      <LineId Id="27" Count="1" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="13" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.programmNamenSchreiben">
+      <LineId Id="6" Count="1" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="8" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.programmTempLaden">
+      <LineId Id="6" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="56" Count="1" />
+      <LineId Id="9" Count="32" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.programmTempLoeschen">
+      <LineId Id="18" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="6" Count="2" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.Status.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.Status.Set">
+      <LineId Id="10" Count="0" />
+      <LineId Id="6" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.StatusbarInfoSenden">
+      <LineId Id="8" Count="6" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="16" Count="1" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.StatusbarSetzen">
+      <LineId Id="35" Count="1" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="23" Count="5" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="22" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.StatusFarbe.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Hmi.StatusFarbe.Set">
+      <LineId Id="5" Count="1" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

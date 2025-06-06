@@ -1,0 +1,115 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <TextList Name="TL_Aktoren" Id="{7c530262-d051-4597-8330-6f0d637c777a}">
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListObject">
+          <v n="UniqueIdGenerator">"0"</v>
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"0"</v>
+              <v n="TextDefault">"keine Aktion"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"1"</v>
+              <v n="TextDefault">"Aktor1 Vor"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"2"</v>
+              <v n="TextDefault">"Aktor1 Zurück"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"3"</v>
+              <v n="TextDefault">"Aktor2 Vor"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"4"</v>
+              <v n="TextDefault">"Aktor2 Zurück"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"5"</v>
+              <v n="TextDefault">"Aktor3 Vor"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"6"</v>
+              <v n="TextDefault">"Aktor3 Zurück"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"7"</v>
+              <v n="TextDefault">"Aktor4 Vor"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"8"</v>
+              <v n="TextDefault">"Aktor4 Zurück"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"9"</v>
+              <v n="TextDefault">"Aktor5 Vor"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"10"</v>
+              <v n="TextDefault">"Aktor5 Zurück"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"11"</v>
+              <v n="TextDefault">"Aktor6 Vor"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"12"</v>
+              <v n="TextDefault">"Aktor6 Zurück"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"13"</v>
+              <v n="TextDefault">"teilAnwesend"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"14"</v>
+              <v n="TextDefault">"Ext. Gerät bereit"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"15"</v>
+              <v n="TextDefault">"Ext. Gerät starten"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"16"</v>
+              <v n="TextDefault">"warten"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{6c4aa13d-128c-4e80-b945-928b8aebd160}</v>
+          <v n="GuidReInit">{541be0eb-3077-4729-b4e0-3901709e28bb}</v>
+          <v n="GuidExitX">{a26ddb20-c0f6-4837-b100-256e7e6f0bbc}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListObject">{2bef0454-1bd3-412a-ac2c-af0f31dbc40f}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </TextList>
+</TcPlcObject>

@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Wartung" Id="{e77e97ea-3e37-402f-abb4-9b5f8716ccd3}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Wartung
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	bWartungAnstehend:			BOOL;	
+
+	i:							INT;
+	fZeitBisWartung:			LREAL;	
+END_VAR
+VAR PERSISTENT
+	aWartungen:					ARRAY[1..Parameter.cAnzWartungen] OF ST_Wartung;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bWartungAnstehend := FALSE;
+FOR i := 1 TO Parameter.cAnzWartungen DO
+	
+	//***************************************************************************************************
+	//Konfiguration übernehmen
+	aWartungen[i].sBezeichnung		:= Parameter.aWartungenConfig[i].sBezeichnung;	
+	aWartungen[i].sPerson			:= Parameter.aWartungenConfig[i].sPerson;
+	aWartungen[i].nZyklenBisWartung	:= Parameter.aWartungenConfig[i].nZyklenBisWartung;
+	aWartungen[i].fZeitBisWartung	:= Parameter.aWartungenConfig[i].fZeitBisWartung;
+	
+	//***************************************************************************************************
+	fZeitBisWartung := aWartungen[i].fZeitBisWartung * 3600000;
+	
+	//Zyklus Zeit hochzählen
+	aWartungen[i].fZeitSeitWartung := aWartungen[i].fZeitSeitWartung + Parameter.fZyklusZeitTask;
+	
+	//Verbleibende Zeit
+	IF			(fZeitBisWartung > 0) THEN
+//		IF			(fZeitBisWartung - aWartungen[i].fZeitSeitWartung) <= 0 THEN
+//			aWartungen[i].sVerbleibendeZeit := 'Abgelaufen';
+//		ELSE
+			aWartungen[i].sVerbleibendeZeit := LREAL_TO_STRING(LINT_TO_LREAL(LREAL_TO_LINT((fZeitBisWartung - aWartungen[i].fZeitSeitWartung)/36000))/100);
+//		END_IF
+		aWartungen[i].sZeitBisWartung := REAL_TO_STRING(aWartungen[i].fZeitBisWartung);
+	ELSE
+		aWartungen[i].sVerbleibendeZeit := '-';
+		aWartungen[i].sZeitBisWartung := '-';
+	END_IF
+	
+	//Verbleibende Zyklen
+	IF			(aWartungen[i].nZyklenBisWartung > 0) THEN
+		IF			(aWartungen[i].nZyklenBisWartung - aWartungen[i].nZyklenSeitWartung) <= 0 THEN
+			aWartungen[i].sVerbleibendeZyklen := 'Abgelaufen';
+		ELSE
+			aWartungen[i].sVerbleibendeZyklen := LINT_TO_STRING(aWartungen[i].nZyklenBisWartung - aWartungen[i].nZyklenSeitWartung);
+		END_IF
+		aWartungen[i].sZyklenBisWartung := LINT_TO_STRING(aWartungen[i].nZyklenBisWartung);
+	ELSE
+		aWartungen[i].sVerbleibendeZyklen := '-';
+		aWartungen[i].sZyklenBisWartung := '-';
+	END_IF
+
+	//***************************************************************************************************
+	//Überprüfung ob Wartung ansteht
+	aWartungen[i].bAnstehend := 		aWartungen[i].nZyklenSeitWartung >= aWartungen[i].nZyklenBisWartung
+								AND		aWartungen[i].nZyklenBisWartung > 0
+								
+								OR		aWartungen[i].fZeitSeitWartung >= fZeitBisWartung
+								AND		aWartungen[i].fZeitBisWartung > 0;
+								
+	IF			aWartungen[i].bAnstehend THEN
+		bWartungAnstehend := TRUE;
+	END_IF
+	
+	//***************************************************************************************************
+	//Zurücksetzen
+	IF			aWartungen[i].bBtnReset THEN
+		aWartungen[i].bBtnReset := FALSE;
+		aWartungen[i].fZeitSeitWartung := 0;
+		aWartungen[i].nZyklenSeitWartung := 0;
+	END_IF
+END_FOR]]></ST>
+    </Implementation>
+    <Method Name="zyklusHinzufuegen" Id="{4c8704ff-1b9c-4918-9d10-447d3165a2f9}">
+      <Declaration><![CDATA[METHOD zyklusHinzufuegen
+VAR_INPUT
+	eWartung:		Wartungen;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[aWartungen[eWartung].nZyklenSeitWartung := aWartungen[eWartung].nZyklenSeitWartung + 1;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Wartung">
+      <LineId Id="3" Count="60" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Wartung.zyklusHinzufuegen">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

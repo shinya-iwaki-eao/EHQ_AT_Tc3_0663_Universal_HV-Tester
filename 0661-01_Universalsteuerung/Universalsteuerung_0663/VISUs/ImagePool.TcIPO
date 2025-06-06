@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <ImagePool Name="ImagePool" Id="{49f60b15-2d11-431b-9d7a-d2a715cb7aa4}">
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="ImagePoolObject">
+          <v n="UniqueIdGenerator">"79"</v>
+          <l n="BitmapPool" t="ArrayList" cet="ImagePoolItem">
+            <o>
+              <v n="BitmapID">"EAOLOGO"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\EAO\EAOLOGO.png"</v>
+              <v n="ItemID">12</v>
+            </o>
+            <o>
+              <v n="BitmapID">"clicker"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\clicker.png"</v>
+              <v n="ItemID">13</v>
+            </o>
+            <o>
+              <v n="BitmapID">"return"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\return.png"</v>
+              <v n="ItemID">14</v>
+            </o>
+            <o>
+              <v n="BitmapID">"menu"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\menu.png"</v>
+              <v n="ItemID">15</v>
+            </o>
+            <o>
+              <v n="BitmapID">"parameters"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\parameters.png"</v>
+              <v n="ItemID">16</v>
+            </o>
+            <o>
+              <v n="BitmapID">"settings"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\settings.png"</v>
+              <v n="ItemID">17</v>
+            </o>
+            <o>
+              <v n="BitmapID">"tables-couple"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\tables-couple.png"</v>
+              <v n="ItemID">18</v>
+            </o>
+            <o>
+              <v n="BitmapID">"two-way"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\two-way.png"</v>
+              <v n="ItemID">19</v>
+            </o>
+            <o>
+              <v n="BitmapID">"eventLogger"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\eventLogger.png"</v>
+              <v n="ItemID">22</v>
+            </o>
+            <o>
+              <v n="BitmapID">"order"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\order.png"</v>
+              <v n="ItemID">23</v>
+            </o>
+            <o>
+              <v n="BitmapID">"information"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\information.png"</v>
+              <v n="ItemID">24</v>
+            </o>
+            <o>
+              <v n="BitmapID">"aktiv"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\aktiv.png"</v>
+              <v n="ItemID">21</v>
+            </o>
+            <o>
+              <v n="BitmapID">"cleared"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\cleared.png"</v>
+              <v n="ItemID">36</v>
+            </o>
+            <o>
+              <v n="BitmapID">"info"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\message.png"</v>
+              <v n="ItemID">52</v>
+            </o>
+            <o>
+              <v n="BitmapID">"warnung"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\warning.png"</v>
+              <v n="ItemID">55</v>
+            </o>
+            <o>
+              <v n="BitmapID">"error"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\error.png"</v>
+              <v n="ItemID">59</v>
+            </o>
+            <o>
+              <v n="BitmapID">"qrCodeDummy"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\qrcodeDummy.png"</v>
+              <v n="ItemID">61</v>
+            </o>
+            <o>
+              <v n="BitmapID">"motor"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\electric-motor.png"</v>
+              <v n="ItemID">71</v>
+            </o>
+            <o>
+              <v n="BitmapID">"Wartung"</v>
+              <v n="FileID">"5ce3da45-db07-42e7-a21c-a00fff4ed8f6|Bilder\Icons\danger.png"</v>
+              <v n="ItemID">74</v>
+            </o>
+            <o>
+              <v n="BitmapID">""</v>
+              <v n="FileID">""</v>
+              <v n="ItemID">77</v>
+            </o>
+          </l>
+          <v n="GuidInit">{b7383d88-6137-4910-8686-e438dca36435}</v>
+          <v n="GuidReInit">{c81ddd15-30f9-4373-ad04-6b6cd8e0c684}</v>
+          <v n="GuidExitX">{cd3fe2d4-a165-42a2-ad55-9e2ca9e7d035}</v>
+          <v n="ValidIds">true</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Boolean">System.Boolean</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="ImagePoolItem">{215b2719-0347-4e4d-ba85-8bcd66946f66}</Type>
+        <Type n="ImagePoolObject">{bb0b9044-714e-4614-ad3e-33cbdf34d16b}</Type>
+        <Type n="Int32">System.Int32</Type>
+        <Type n="String">System.String</Type>
+      </TypeList>
+    </XmlArchive>
+  </ImagePool>
+</TcPlcObject>

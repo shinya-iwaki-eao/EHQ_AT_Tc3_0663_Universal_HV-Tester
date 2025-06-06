@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="Artikeltyp" Id="{fd053527-b990-4b6a-85da-e621b5071f0c}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE Artikeltyp :
+(
+	default 				:= 0,
+	br51,
+	br84
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

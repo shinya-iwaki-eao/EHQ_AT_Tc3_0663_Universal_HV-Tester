@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="AblaufStatus" Id="{a59a1c22-996a-4ff5-8a08-7f96a5efe404}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+//{attribute 'strict'}
+{attribute 'to_string'}
+TYPE AblaufStatus :
+(
+//	default				:= 0,
+//	bereit				:= 1,
+//	error				:= 2,
+//	produziert			:= 3,
+//	fertig				:= 5,
+//	popUp				:= 6,
+	
+//	aktor01Vor			:= 10,
+//	aktor01Zurueck		:= 11,
+//	aktor02Vor			:= 20,
+//	aktor02Zurueck		:= 21,
+//	aktor03Vor			:= 30,
+//	aktor03Zurueck		:= 31,
+//	aktor04Vor			:= 40,
+//	aktor04Zurueck		:= 41,
+//	aktor05Vor			:= 50,
+//	aktor05Zurueck		:= 51,
+//	aktor06Vor			:= 60,
+//	aktor06Zurueck		:= 61,
+	
+//	teilAnwesend		:= 80,
+//	extGeraetBereit		:= 81,
+//	extGeraetStart		:= 82,
+//	warten				:= 90,
+	
+//	nameUeberpruefen 	:= 200,
+//	freierPlatzsuchen 	:= 201,
+//	programmSpeichern 	:= 202,
+//	programmAnzeigen	:= 203,
+//	programmLoeschen	:= 204
+
+	default				:= 0,
+	aktor01Vor			:= 1,
+	aktor01Zurueck		:= 2,
+	aktor02Vor			:= 3,
+	aktor02Zurueck		:= 4,
+	aktor03Vor			:= 5,
+	aktor03Zurueck		:= 6,
+	aktor04Vor			:= 7,
+	aktor04Zurueck		:= 8,
+	aktor05Vor			:= 9,
+	aktor05Zurueck		:= 10,
+	aktor06Vor			:= 11,
+	aktor06Zurueck		:= 12,
+	teilAnwesend		:= 13,
+	extGeraetBereit		:= 14,
+	extGeraetStart		:= 15,
+	extGeraetFertig		:= 16,
+	warten				:= 17,
+	schritt				:= 18,
+	
+	bereit				:= 30,
+	error				:= 31,
+	produziert			:= 32,
+	fertig				:= 33,
+	popUp				:= 34,
+	naechsterSchritt	:= 35,
+	
+	nameUeberpruefen 	:= 200,
+	freierPlatzsuchen 	:= 201,
+	programmSpeichern 	:= 202,
+	programmAnzeigen	:= 203,
+	programmLoeschen	:= 204,
+	
+	oeffnen				:= 300,
+	wartenOffen			:= 301,
+	schreiben			:= 302,
+	wartenGeschrieben	:= 303,
+	schliessen			:= 304,
+	wartenGeschlossen	:= 305
+	
+	
+	
+
+	
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

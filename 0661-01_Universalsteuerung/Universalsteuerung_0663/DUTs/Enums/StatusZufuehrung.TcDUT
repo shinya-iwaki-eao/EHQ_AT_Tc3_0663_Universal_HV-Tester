@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="StatusZufuehrung" Id="{164038b7-9f40-492f-8083-7d5041d6cb36}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE StatusZufuehrung :
+(
+	default := 0,
+	bereit,						//Entstören Stau
+	keinTeil,					// Ablauf
+	teilHolen,					// Ablauf
+	teilVereinzelt,				// Ablauf
+	teilEntnommen, 				// Ablauf
+	fertig						// Ablauf
+
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_AufnahmeInfo" Id="{c40f681e-13cc-4377-97fc-87d3a5e9cf2a}">
+    <Declaration><![CDATA[TYPE ST_AufnahmeInfo :
+STRUCT
+	//Arbeitsschritte
+	
+	//Infos
+	bFertig:					BOOL;		//Teil fertig oder Ausschuss (kann entnommen werden)
+	bAusschuss:					BOOL;
+	
+	fLaengeBolzen1:				REAL;
+	fLaengeBolzen2:				REAL;
+	fLaengeGesamt:				REAL;
+	
+	//nFehlerCodeMontage:			LWORD;
+	(*Fehlercodes:
+	Bit|Grund
+	0	Lagerplatte Pos 1 nicht in Toleranz
+	1	Lagerplatte Pos 2 nicht in Toleranz
+	2	Lagerplatte Pos 3 nicht in Toleranz
+	3	Lagerplatte Pos 1 erkannt obwohl keine Bestückt werden sollte
+	4	Lagerplatte Pos 2 erkannt obwohl keine Bestückt werden sollte
+	5	Lagerplatte Pos 3 erkannt obwohl keine Bestückt werden sollte
+	*)
+	
+	//Artikelparameter
+	stArtParam:					ST_ArtikelParameter;
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

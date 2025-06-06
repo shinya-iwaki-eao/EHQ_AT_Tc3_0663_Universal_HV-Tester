@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_Status" Id="{925dcbd1-c6eb-4c2b-8576-e70c06af65d1}">
+    <Declaration><![CDATA[TYPE ST_Status :
+STRUCT
+	bEnabled:				BIT;
+	bTripped:				BIT;
+	bShortCircuit:			BIT;
+	bOverload:				BIT;
+	bHardwareProtection:	BIT;
+	bOvervoltage:			BIT;
+	bUndervoltage:			BIT;
+	bCurrentLevelWarning:	BIT;
+	bCoolDownLock:			BIT;
+	bDisabledBySwitch:		BIT;
+	bDisabledByDI:			BIT;
+	bDisabledByOutput:		BIT;
+	bDiag:					BIT;
+	bTxPDOState:			BIT;
+	bInputCycleCounter:		ST_BIT2;
+	bStateDeviceSwitch:		BIT;
+	bStateDigitalInput:		BIT;
+	bError:					BIT;
+	bStateReset:			BIT;
+	bStateSwitch:			BIT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

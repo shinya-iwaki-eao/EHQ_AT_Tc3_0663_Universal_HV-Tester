@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="InitStatus" Id="{65e60941-1ef0-488e-8949-fa3ad8863611}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE InitStatus :
+(
+	default := 0,
+	bereit,
+	steuerungEin,
+	safety,
+	resetSafety,
+	luftdruck,
+	fertig,
+	stationen,
+	aktor1,
+	aktor2,
+	aktor3,
+	aktor4,
+	aktor5,
+	aktor6
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

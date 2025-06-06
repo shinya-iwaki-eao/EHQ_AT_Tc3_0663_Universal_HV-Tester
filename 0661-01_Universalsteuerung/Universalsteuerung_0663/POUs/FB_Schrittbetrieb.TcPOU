@@ -1,0 +1,613 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Schrittbetrieb" Id="{49267e6f-7334-4a2c-8702-a1c7cf9626d3}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Schrittbetrieb
+VAR_INPUT
+	eAblaufStatus:			AblaufStatus;
+	eHolStatus:				AblaufStatus;
+	eBereitstellStatus:		AblaufStatus;
+	bAblaufAktiv:			BOOL;				//Info ob ein Teil bearbetet, geholt oder bereitgestellt werden muss
+	
+	bAktorPosNIO:			BOOL;				//True wenn ein aktor im handbetrieb verfahren wurde
+	
+	stStationInfo:			REFERENCE TO ST_Station;
+	bRstInPos:				BOOL;
+END_VAR
+VAR_OUTPUT
+	bInQueue:				BOOL;				//Es wurde rueckwaerts in die Queue gefahren und die vorherige Position wurde nicht wieder erreicht
+	bAblaufFreigabe:		BOOL;				//Die Aktoren im normalen Ablauf dürfen fahren (Handoverride true) (nur bis Statuswechsel true)
+	bSendFalschePosError:	BOOL;				//Aktoren sollen falsche Pos senden
+END_VAR
+VAR
+	aSchrittQueue:			ARRAY[0..Parameter.cGroesseSchrittQueue] OF ST_SchrittQueue;
+	nIndex:					INT;
+	i:						INT;
+	
+	nAktPosition:			INT;				//Aktuelle Position in Queue
+	nSollAktPos:			INT;				//Welche position andgefahren werden soll (wechselt schon wenn bewegung ausgefuehrt aber Sensoren nicht angeben)
+	
+	
+	ePrevAblaufStatus:		AblaufStatus;
+	ePrevHolStatus:			AblaufStatus;	
+	ePrevBereitstellStatus:	AblaufStatus;
+	
+	bBtnSchrittVor:			BOOL;
+	bBtnSchrittZurueck:		BOOL;
+	
+	bSchrittVor:			BOOL;
+	bSchrittZurueck:		BOOL;
+	bVorBisEnde:			BOOL;
+	
+	fbSendErrorTrig:		R_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//********************************************************************************
+//Statuswechsel erkennen
+IF			ePrevAblaufStatus <> eAblaufStatus
+	OR		ePrevHolStatus <> eHolStatus
+	OR		ePrevBereitstellStatus <> eBereitstellStatus THEN
+	
+	IF			nIndex > 0 THEN
+		aSchrittQueue[nIndex-1].bStatuswechsel := TRUE;
+	END_IF
+	
+	bAblaufFreigabe := FALSE;
+	
+	ePrevAblaufStatus		:= eAblaufStatus;
+	ePrevHolStatus			:= eHolStatus;
+	ePrevBereitstellStatus	:= eBereitstellStatus;
+END_IF
+
+//********************************************************************************
+//Handheld
+IF			MAIN.fbHandheld.nGewaehlteStation = stStationInfo.nStationsNr THEN
+	
+	IF			MAIN.bE_Handbetrieb THEN
+		
+		IF			MAIN.fbHandheld.fbVorTrig.Q THEN
+			bBtnSchrittVor := TRUE;
+		ELSIF		MAIN.fbHandheld.fbZurueckTrig.Q THEN
+			bBtnSchrittZurueck := TRUE;
+		END_IF
+		
+	END_IF
+END_IF
+
+//********************************************************************************
+//Zurueck zu Start wenn Anlage weiterlaeuft
+IF			MAIN.bProduzieren
+	AND NOT MAIN.bE_Handbetrieb
+	AND		bInQueue
+	AND NOT bSchrittZurueck
+	AND NOT bSchrittVor THEN
+	bVorBisEnde := TRUE;
+	bBtnSchrittVor := TRUE;
+ELSIF		MAIN.bE_Handbetrieb
+	OR	NOT bInQueue THEN
+	bVorBisEnde := FALSE;
+END_IF
+
+//********************************************************************************
+//Aktoren fehler senden lassen wenn pos NIO 
+fbSendErrorTrig(CLK := 			bAktorPosNIO 
+						AND		(bBtnSchrittVor 
+						OR 		bBtnSchrittZurueck),
+				Q => bSendFalschePosError);
+
+//********************************************************************************
+//Schrittausloesung
+IF 		NOT MAIN.bE_Handbetrieb THEN		//Zurück geht nur im Handbetrieb (vor geht auch wenn bis zum Ende gefahren weden mus)
+	bBtnSchrittZurueck := FALSE;
+END_IF
+
+IF			(MAIN.bE_Handbetrieb
+	OR		bVorBisEnde)
+	AND	NOT bAktorPosNIO THEN
+	
+	IF			bBtnSchrittVor THEN
+		bBtnSchrittVor := FALSE;
+		
+		IF			bSchrittZurueck THEN
+			bSchrittZurueck := FALSE;
+			nAktPosition := nSollAktPos;
+		END_IF
+	
+		bSchrittVor := TRUE;			//Kann nur gesetzt werden wenn bSchrittZueuck nicht gesetzt ist
+	END_IF
+	
+	IF			bBtnSchrittZurueck THEN
+		bBtnSchrittZurueck := FALSE;
+		
+		//Wenn ein Schritt im Ablauf nicht fertig wird kann trozdem zurueck gefahren werden
+		IF			bAblaufFreigabe THEN
+			bAblaufFreigabe := FALSE;
+		END_IF
+		
+		IF			bSchrittVor THEN
+			bSchrittVor := FALSE;
+			nAktPosition := nSollAktPos;
+		END_IF
+		
+		bSchrittZurueck := TRUE;			//Kann nur gesetzt werden wenn bSchrittZueuck nicht gesetzt ist
+	END_IF
+ELSE
+	bBtnSchrittVor := FALSE;
+	bBtnSchrittZurueck := FALSE;
+	bAblaufFreigabe := FALSE;
+END_IF
+
+//********************************************************************************
+//Aktor Pos NIO reset damit die aktoren erneut setzen koennen im naechsten zuecklus
+bAktorPosNIO := FALSE;
+
+//********************************************************************************
+//Schrittauslösung Ausführen
+IF			bSchrittVor THEN
+	bSchrittVor := NOT schrittVor();
+END_IF
+
+IF			bSchrittZurueck THEN
+	bSchrittZurueck := NOT schrittZurueck();
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="addToQueue" Id="{76ed82ee-18f3-436d-8f4a-493059dd1613}">
+      <Declaration><![CDATA[METHOD addToQueue
+VAR_INPUT
+	stEintrag:			ST_SchrittQueue;
+END_VAR
+VAR
+	i:					INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Bewegungen nicht aufnehmen wenn in der Queue verfahren wird
+IF			bInQueue
+	OR		bSchrittVor
+	OR		bSchrittZurueck THEN
+	RETURN;
+END_IF
+
+
+IF			(nIndex > Parameter.cGroesseSchrittQueue) THEN
+	nIndex := Parameter.cGroesseSchrittQueue;
+	
+	//Alle Eintraege schieben, aelteste faellt raus
+	FOR i:=1 TO Parameter.cGroesseSchrittQueue DO
+		aSchrittQueue[i-1] := aSchrittQueue[i];
+	END_FOR
+END_IF
+
+//In Queue aufnehmen und Message zurueckgeben
+aSchrittQueue[nIndex] := stEintrag;
+nAktPosition := nIndex;
+nIndex := nIndex+1;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="reset" Id="{f62ec5d3-ef61-4923-8692-a04401c32f54}">
+      <Declaration><![CDATA[METHOD reset
+VAR_INPUT
+END_VAR
+VAR
+	i:						INT;
+	stTempLeer:				ST_SchrittQueue;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Alle Eintraege schieben, aelteste faellt raus
+FOR i:=0 TO Parameter.cGroesseSchrittQueue DO
+	aSchrittQueue[i] := stTempLeer;
+END_FOR
+nIndex 			:= 0;
+nAktPosition 	:= 0;
+bInQueue 		:= FALSE;
+bSchrittVor 	:= FALSE;
+bSchrittZurueck := FALSE;
+bAblaufFreigabe := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="schrittVor" Id="{a1184994-5b83-4a87-9d10-6132d4050c03}">
+      <Declaration><![CDATA[METHOD PRIVATE schrittVor : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	i:						INT;
+	nIndexbStatuswechsel:	INT;
+	bPosErreicht: 			BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF		NOT bRstInPos THEN
+	RETURN;
+END_IF
+
+//return wenn Ende erreicht
+IF			nAktPosition >= (nIndex-1) THEN
+	bAblaufFreigabe := bAblaufAktiv;
+	bInQueue := FALSE;
+	schrittVor := TRUE;
+	RETURN;
+END_IF
+
+//********************************************************************************
+FOR i:= nAktPosition+1 TO nIndex-1 DO	
+	nIndexbStatuswechsel := i;
+	nSollAktPos := i;					//Ist immer aktuell wenn for verlassen wird
+	
+	IF 			aSchrittQueue[i].bGesetzt THEN			
+		//*****************************************************************
+		IF			__ISVALIDREF(aSchrittQueue[i].fbAktor) THEN
+			aSchrittQueue[i].fbAktor.bHandOverride := TRUE;
+			aSchrittQueue[i].bInPos := aSchrittQueue[i].fbAktor.arbeitsPos();
+			aSchrittQueue[i].fbAktor.bHandOverride := FALSE;
+		ELSIF		__ISVALIDREF(aSchrittQueue[i].fbOutput) THEN
+			aSchrittQueue[i].fbOutput.bHandOverride := TRUE;
+			aSchrittQueue[i].bInPos := aSchrittQueue[i].fbOutput.set();
+			aSchrittQueue[i].fbOutput.bHandOverride := FALSE;
+		ELSE
+			//Fehler!!!
+			i := i-1;
+			EXIT;
+		END_IF
+		//*****************************************************************
+	ELSE
+		//*****************************************************************
+		IF			__ISVALIDREF(aSchrittQueue[i].fbAktor) THEN
+			aSchrittQueue[i].fbAktor.bHandOverride := TRUE;
+			aSchrittQueue[i].bInPos := aSchrittQueue[i].fbAktor.ruhePos();
+			aSchrittQueue[i].fbAktor.bHandOverride := FALSE;
+		ELSIF		__ISVALIDREF(aSchrittQueue[i].fbOutput) THEN
+			aSchrittQueue[i].fbOutput.bHandOverride := TRUE;
+			aSchrittQueue[i].bInPos := aSchrittQueue[i].fbOutput.reset();
+			aSchrittQueue[i].fbOutput.bHandOverride := FALSE;
+		ELSE
+			//Fehler!!!
+			i := i-1;
+			EXIT;
+		END_IF
+		//*****************************************************************
+	END_IF
+	
+	IF		aSchrittQueue[i].bStatuswechsel THEN
+		EXIT;
+	END_IF
+END_FOR
+
+//********************************************************************************
+bPosErreicht := TRUE;
+FOR i:= nAktPosition+1 TO nIndexbStatuswechsel DO
+	IF		NOT	aSchrittQueue[i].bInPos THEN
+		bPosErreicht := FALSE;
+	END_IF
+END_FOR
+
+//Alle inPos bei jedem Aufruf zuruecksetzten
+FOR i:= nAktPosition+1 TO nIndexbStatuswechsel DO
+	aSchrittQueue[i].bInPos := FALSE;
+END_FOR
+
+IF			bPosErreicht THEN
+	nAktPosition := nIndexbStatuswechsel;
+	IF			nAktPosition = (nIndex-1) THEN
+		bInQueue := FALSE;
+	END_IF	
+	schrittVor := TRUE;	
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="schrittZurueck" Id="{2f0e8325-71fc-42d2-9385-f93f92b020e7}">
+      <Declaration><![CDATA[METHOD PRIVATE schrittZurueck : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	i:						INT;
+	nIndexbStatuswechsel:	INT;
+	bPosErreicht: 			BOOL;
+	
+	nPosVorher:				INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF		NOT bRstInPos THEN
+	RETURN;
+END_IF
+
+IF			nAktPosition >= 0 THEN
+	bInQueue := TRUE;
+ELSE									//Wenn noch kein Schritt aufgezeichnet wurde -> return True
+	schrittZurueck := TRUE;
+	RETURN;
+END_IF
+
+//********************************************************************************
+FOR i:= nAktPosition TO 0 BY -1 DO
+	nIndexbStatuswechsel := i;
+	nSollAktPos := i;					//Ist immer aktuell wenn for verlassen wird
+
+	IF		NOT aSchrittQueue[i].bStatuswechsel
+		OR		i = nAktPosition THEN
+			
+		IF 			aSchrittQueue[i].bGesetzt THEN			
+			//*****************************************************************
+			IF			__ISVALIDREF(aSchrittQueue[i].fbAktor) THEN
+				aSchrittQueue[i].fbAktor.bHandOverride := TRUE;
+				aSchrittQueue[i].bInPos := aSchrittQueue[i].fbAktor.ruhePos();
+				aSchrittQueue[i].fbAktor.bHandOverride := FALSE;
+			ELSIF		__ISVALIDREF(aSchrittQueue[i].fbOutput) THEN
+				aSchrittQueue[i].fbOutput.bHandOverride := TRUE;
+				aSchrittQueue[i].bInPos := aSchrittQueue[i].fbOutput.reset();
+				aSchrittQueue[i].fbOutput.bHandOverride := FALSE;
+			ELSE
+				//Fehler!!!
+				EXIT;
+			END_IF
+			//*****************************************************************
+		ELSE
+			//*****************************************************************
+			IF			__ISVALIDREF(aSchrittQueue[i].fbAktor) THEN
+				aSchrittQueue[i].fbAktor.bHandOverride := TRUE;
+				aSchrittQueue[i].bInPos := aSchrittQueue[i].fbAktor.arbeitsPos();
+				aSchrittQueue[i].fbAktor.bHandOverride := FALSE;
+			ELSIF		__ISVALIDREF(aSchrittQueue[i].fbOutput) THEN
+				aSchrittQueue[i].fbOutput.bHandOverride := TRUE;
+				aSchrittQueue[i].bInPos := aSchrittQueue[i].fbOutput.set();
+				aSchrittQueue[i].fbOutput.bHandOverride := FALSE;
+			ELSE
+				//Fehler!!!
+				EXIT;
+			END_IF
+			//*****************************************************************
+		END_IF
+		
+		//Wenn i=0 ist und der Schritt in Queue[0] ausgeführt wurde muss index -1 sein damit Queue[0] beim vorwärts fahren wieder ausgeführt wird
+		IF			i = 0 THEN
+			nIndexbStatuswechsel := -1;
+			nSollAktPos := -1;
+		END_IF
+		
+	ELSIF		aSchrittQueue[i].bStatuswechsel
+		AND		i <> nAktPosition THEN
+		EXIT;
+	END_IF
+END_FOR
+
+//********************************************************************************
+//Abfrage alle in Pos
+bPosErreicht := TRUE;
+FOR i:= nAktPosition TO nIndexbStatuswechsel+1 BY -1 DO
+	IF		NOT	aSchrittQueue[i].bInPos THEN
+		bPosErreicht := FALSE;
+	END_IF
+END_FOR
+
+//Alle inPos bei jedem Aufruf zuruecksetzten
+FOR i:= nAktPosition TO nIndexbStatuswechsel+1 BY -1 DO
+	aSchrittQueue[i].bInPos := FALSE;
+END_FOR
+
+IF			bPosErreicht THEN
+	nAktPosition := nIndexbStatuswechsel;
+	schrittZurueck := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="vor" Id="{af8b32c6-933a-4093-ae38-5aed81f2accf}">
+      <Declaration><![CDATA[METHOD vor
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bBtnSchrittVor := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="zurueck" Id="{4bf4315e-4bc7-4ac8-b37a-be7a9ae2530c}">
+      <Declaration><![CDATA[METHOD zurueck
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bBtnSchrittZurueck := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Schrittbetrieb">
+      <LineId Id="34" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="41" Count="1" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="190" Count="0" />
+      <LineId Id="192" Count="1" />
+      <LineId Id="47" Count="1" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="642" Count="1" />
+      <LineId Id="641" Count="0" />
+      <LineId Id="650" Count="2" />
+      <LineId Id="660" Count="0" />
+      <LineId Id="655" Count="1" />
+      <LineId Id="658" Count="1" />
+      <LineId Id="657" Count="0" />
+      <LineId Id="661" Count="0" />
+      <LineId Id="654" Count="0" />
+      <LineId Id="646" Count="0" />
+      <LineId Id="120" Count="0" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="121" Count="0" />
+      <LineId Id="123" Count="1" />
+      <LineId Id="130" Count="0" />
+      <LineId Id="126" Count="1" />
+      <LineId Id="149" Count="0" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="152" Count="0" />
+      <LineId Id="151" Count="0" />
+      <LineId Id="135" Count="0" />
+      <LineId Id="712" Count="0" />
+      <LineId Id="707" Count="4" />
+      <LineId Id="706" Count="0" />
+      <LineId Id="522" Count="0" />
+      <LineId Id="492" Count="0" />
+      <LineId Id="471" Count="0" />
+      <LineId Id="582" Count="1" />
+      <LineId Id="580" Count="1" />
+      <LineId Id="153" Count="1" />
+      <LineId Id="368" Count="0" />
+      <LineId Id="160" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="239" Count="0" />
+      <LineId Id="234" Count="0" />
+      <LineId Id="238" Count="0" />
+      <LineId Id="235" Count="1" />
+      <LineId Id="233" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="75" Count="2" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="200" Count="0" />
+      <LineId Id="197" Count="2" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="242" Count="2" />
+      <LineId Id="241" Count="0" />
+      <LineId Id="196" Count="0" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="588" Count="1" />
+      <LineId Id="591" Count="0" />
+      <LineId Id="587" Count="0" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="413" Count="1" />
+      <LineId Id="385" Count="0" />
+      <LineId Id="388" Count="0" />
+      <LineId Id="84" Count="1" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="86" Count="2" />
+      <LineId Id="90" Count="2" />
+      <LineId Id="89" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Schrittbetrieb.addToQueue">
+      <LineId Id="55" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="62" Count="1" />
+      <LineId Id="53" Count="1" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="22" Count="4" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="38" Count="3" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="48" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Schrittbetrieb.reset">
+      <LineId Id="8" Count="2" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="14" Count="3" />
+      <LineId Id="13" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Schrittbetrieb.schrittVor">
+      <LineId Id="135" Count="1" />
+      <LineId Id="133" Count="1" />
+      <LineId Id="77" Count="0" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="14" Count="1" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="125" Count="0" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="26" Count="2" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="32" Count="1" />
+      <LineId Id="99" Count="0" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="34" Count="4" />
+      <LineId Id="113" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="114" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="115" Count="0" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="42" Count="1" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="98" Count="0" />
+      <LineId Id="44" Count="4" />
+      <LineId Id="50" Count="4" />
+      <LineId Id="56" Count="5" />
+      <LineId Id="79" Count="3" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="62" Count="2" />
+      <LineId Id="84" Count="1" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Schrittbetrieb.schrittZurueck">
+      <LineId Id="208" Count="0" />
+      <LineId Id="210" Count="1" />
+      <LineId Id="221" Count="0" />
+      <LineId Id="99" Count="4" />
+      <LineId Id="222" Count="0" />
+      <LineId Id="105" Count="0" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="200" Count="0" />
+      <LineId Id="199" Count="0" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="113" Count="1" />
+      <LineId Id="227" Count="0" />
+      <LineId Id="116" Count="2" />
+      <LineId Id="178" Count="0" />
+      <LineId Id="119" Count="0" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="120" Count="0" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="121" Count="0" />
+      <LineId Id="181" Count="0" />
+      <LineId Id="122" Count="1" />
+      <LineId Id="169" Count="0" />
+      <LineId Id="124" Count="4" />
+      <LineId Id="184" Count="0" />
+      <LineId Id="129" Count="0" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="130" Count="0" />
+      <LineId Id="182" Count="0" />
+      <LineId Id="131" Count="0" />
+      <LineId Id="183" Count="0" />
+      <LineId Id="132" Count="1" />
+      <LineId Id="170" Count="0" />
+      <LineId Id="134" Count="2" />
+      <LineId Id="228" Count="0" />
+      <LineId Id="232" Count="0" />
+      <LineId Id="230" Count="1" />
+      <LineId Id="233" Count="0" />
+      <LineId Id="229" Count="0" />
+      <LineId Id="137" Count="3" />
+      <LineId Id="193" Count="0" />
+      <LineId Id="142" Count="2" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="146" Count="5" />
+      <LineId Id="160" Count="0" />
+      <LineId Id="157" Count="2" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="152" Count="1" />
+      <LineId Id="226" Count="0" />
+      <LineId Id="155" Count="0" />
+      <LineId Id="90" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Schrittbetrieb.vor">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Schrittbetrieb.zurueck">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

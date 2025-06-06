@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="Parameter" Id="{7a68f414-0232-4b4f-a7d9-b7b3a51fa19e}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL	
+	
+END_VAR
+
+VAR_GLOBAL CONSTANT
+	
+	//Allegemein
+	cAnzStationen:				INT := 1;
+	cAnzAktoren:				INT := 6;
+	cAnzSchritte:				INT := 12;
+	cAnzEvents:					INT := 300;
+	cAnzLoggedEvents:			INT := 100;
+	cAktRateStundenLeistung:	INT := 30;
+	
+	cGroesseSchrittQueue:		INT := 100;
+	
+	fZyklusZeitTask:			REAL := 10;	//ms
+	cMaschinenInfo:				STRING := '0660.0000 / Zweihandausloesung';
+	
+
+	//Aktoren
+	cZylZeit:					TIME := T#700MS;
+	cZylUeberwachung:			TIME := T#1S;
+	cZylUeberwachung2s:			TIME := T#2S;
+	cZylUeberwachung3s:			TIME := T#3S;
+	cZangeUeberwachung:			TIME := T#300MS;
+	cDreherUeberwachung:		TIME := T#1S;
+	cZangeZeit:					TIME := T#100MS;
+	cZangeZeit2:				TIME := T#200MS;
+	cZangeZeit3:				TIME := T#300MS;
+	cDreherZeit:				TIME := T#200MS;
+	cBlockierungZeit:			TIME := T#100MS;
+	cZeitZwischenanschlag:		TIME := T#100MS;
+		
+	//Station 1
+	cPresseFehlerZeit:			TIME := T#5000MS;
+
+	//MQTT 
+	cJsonLenApromace:			UINT := 5000;
+	
+	// Programmhandling
+	cMaxProgramme:				INT := 100;
+	
+	
+	
+	//Wartungen		
+	cAnzWartungen:				INT := 1;	
+	cMaxZyklNotHalt:			DINT := 2500;		// Gem. SISTEMA 2500 Zyklen		
+	aWartungenConfig:			ARRAY[1..Parameter.cAnzWartungen] OF ST_Wartung :=
+								//Liste der Wartungen 
+								[	
+								(	sBezeichnung		:= 'Not-Halt austauschen',
+									sPerson				:= 'Betriebsmechaniker',
+									nZyklenBisWartung	:= 100000,
+									fZeitBisWartung 	:= 0)];			//in h
+									
+	//CSV
+	sPfad:						STRING := '\Hard Disk2\';
+	cAnzCSVStrings:				INT := 1000;
+									
+END_VAR
+
+VAR_GLOBAL PERSISTENT
+	nAnzAusschussBisStoerung:	INT;
+
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>
