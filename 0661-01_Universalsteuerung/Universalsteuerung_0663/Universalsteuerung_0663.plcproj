@@ -379,9 +379,6 @@
       <Namespace>VisuSymbols</Namespace>
     </LibraryReference>
   </ItemGroup>
-  <ItemGroup>
-    <SubObject Include="FB_Wartung.zyklusHinzufuegen" />
-  </ItemGroup>
   <ProjectExtensions>
     <PlcProjectOptions>
       <XmlArchive>
